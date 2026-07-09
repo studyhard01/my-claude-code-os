@@ -1,0 +1,38 @@
+# ============================================================================
+# CI — push 이후의 자동 검문소 (로컬 검증과 같은 절차: db:push → typecheck → test)
+# ----------------------------------------------------------------------------
+# 로컬 훅·스킬이 검증을 빼먹어도 여기서 잡힌다. 원격 = 백업이 아니라 검문소.
+# Prisma 클라이언트가 없으면 typecheck 가 계약과 무관한 오류를 내므로(CLAUDE.md)
+# db:push(클라이언트 생성 포함)를 반드시 typecheck 앞에 둔다.
+# ============================================================================
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: env 준비 (DATABASE_URL)
+        run: cp .env.example .env
+
+      - name: Prisma 스키마 반영 + 클라이언트 생성
+        run: npm run db:push
+
+      - name: 타입체크
+        run: npm run typecheck
+
+      - name: 테스트
+        run: npm test
