@@ -29,7 +29,7 @@
 - **피드 정렬·필터 UX 개선** (orchestrate 시연) — `sort=recent` 정렬·집계 규약 구현(`totalCount` 부분집합 버그 수정), 필터↔URL 동기화(새로고침·공유 복원), 적용된 필터 칩·"필터 전체 해제". 계약 모호점을 OS.md 12.6/6장에 명문화(DECISIONS.md 자동 기록)
 - **수집 파이프라인 구현 (OS.md 12.8)** — fixture(`saramin-job-search.json`, FULL 5+PARTIAL 4) → `SaraminAdapter`(fetchFn 주입, 실행당 최대 5콜) → `Normalizer`(name 키워드 라벨 매핑·dedupKey·dataQuality) → `scripts/collect.ts`(`COLLECT_SOURCE` 스위치, idempotent upsert). `saramin-fixture` 모드로 수집→upsert→`GET /api/jobs` 노출까지 검증(재실행 시 신규 0 확인)
 
-- **루프 진단 후 낭비 2건 해소** — ① CI 도입(`.github/workflows/ci.yml`: push/PR 마다 db:push→typecheck→test. 원격=백업→검문소) ② `/commit` 스킬에 검증 게이트("초록불 없이 커밋 금지", 문서-only 커밋만 예외). 홈(`~/.claude`)·프로젝트 두 commit 스킬 동기화. **push 후 Actions 첫 실행 확인 필요**
+- **루프 진단 후 낭비 2건 해소** — ① CI 도입(`.github/workflows/ci.yml`: push/PR 마다 db:push→typecheck→test. 원격=백업→검문소) ② `/commit` 스킬에 검증 게이트("초록불 없이 커밋 금지", 문서-only 커밋만 예외). 홈(`~/.claude`)·프로젝트 두 commit 스킬 동기화. **CI 첫 실행 성공 확인(2026-07-13, run #1, 32초)** — 검문소 가동
 - **`ralph-test` 랄프 루프 스킬 + Vitest 도입** — "한 호출 = 한 바퀴(모듈 1개 테스트→통과 확인→커밋→기록)" 구조, 반복은 `/loop /ralph-test` 가 담당. 진행 상태 = `.claude/ralph-test-progress.md`(대상 8건, 우선순위순). 첫 바퀴(Normalizer 15개 테스트)로 절차 검증 완료
 
 ## 🚧 진행 중 · 남은 것 (M1)
