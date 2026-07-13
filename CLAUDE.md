@@ -66,6 +66,7 @@ npm run test       # vitest — tests/ 아래 단위 테스트 (ralph-test 루�
   - `skill-context`(PreToolUse `Skill` + SubagentStart) — 스킬·에이전트 카탈로그 자동 주입
   - `contract-context`(SubagentStart) — `src/types/contract.ts` 전문을 **개발 에이전트(backend/frontend)에만** 주입(`agent_type` 으로 분기). 그래서 그 둘은 계약 파일을 따로 열 필요가 없다.
   - `decision-log`(PostToolUse `Edit|Write`) — OS.md 변경 → `DECISIONS.md` 에 **바뀐 절 이름**까지 기록. 직전본 스냅샷(`.claude/.os-snapshot.md`, git 무시)과 비교해 알아낸다.
+  - `loop-map-context`(PostToolUse `Edit|Write`) — 루프 구성 파일(훅 `.sh`·스킬 SKILL.md·settings.json·CI 워크플로) 수정 감지 → "루프 지도(`docs/dev-loop-map.html`) 갱신 + 같은 주소로 재발행" 컨텍스트 주입. 지도 파일 자신은 무시(무한 메아리 방지).
   - `skill-usage-log`(PreToolUse `Skill`) — 스킬 호출을 `.claude/skill-usage.log` 에 한 줄씩 append. `skill-stat` 이 이걸 awk 로 집계한다.
 - 이 환경엔 **`jq` 가 없다.** 훅은 `sed` 만으로 작성할 것(`skill-context.sh`·`status-context.sh` 참고).
 
@@ -74,6 +75,7 @@ npm run test       # vitest — tests/ 아래 단위 테스트 (ralph-test 루�
 - **지금 뭘 해야 하나(현황·다음 할 일·블로킹) → `STATUS.md`** (SessionStart 훅이 자동 주입하므로 읽을 필요 없음. **작업이 끝나거나 막히면 갱신할 것.**)
 - **청사진이 언제 바뀌었나(결정 이력) → `DECISIONS.md`** (기획 결정 전 확인, "왜"는 OS.md 본문·커밋 참조)
 - **컨텍스트가 어떻게 주입되나(훅·설계 원칙) → `docs/context.md`** (새 훅을 만들거나 컨텍스트를 바꾸기 전)
+- **개발 루프가 어떻게 생겼나(3레인 지도·병목/반복/낭비 진단) → `docs/dev-loop-map.html`** (루프 엔지니어링 전 확인, 루프가 바뀌면 함께 갱신)
 - 계약·구현 규약 → **OS.md 12장**
 - 백엔드(시스템 구성·수집 폴백) → **OS.md 7·12장**
 - 프론트(핵심 기능·사용자 흐름) → **OS.md 5·6·12장**

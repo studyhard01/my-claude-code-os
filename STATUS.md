@@ -6,7 +6,7 @@
 >
 > 갱신 규칙: 완료→✅로 옮기고, 새로 막히면 ⛔에 추가, "다음 할 일"을 항상 1~3개 유지.
 
-- **최종 갱신**: 2026-07-09 (루프 진단 → 낭비 2건 해소: CI 도입 + /commit 검증 게이트)
+- **최종 갱신**: 2026-07-13 (루프 엔지니어링 시작 — 루프 지도 자동 갱신 훅 `loop-map-context` 신설)
 - **현재 마일스톤**: **M1 — 공고 모아보기 MVP** (직무 범위: 개발직군 한정)
 - **한 줄 요약**: 수집 파이프라인(SaraminAdapter→Normalizer→upsert)이 fixture 로 end-to-end 검증 완료. **남은 건 사람인 API 승인 후 `COLLECT_SOURCE=saramin` 전환뿐.**
 
@@ -29,6 +29,7 @@
 - **피드 정렬·필터 UX 개선** (orchestrate 시연) — `sort=recent` 정렬·집계 규약 구현(`totalCount` 부분집합 버그 수정), 필터↔URL 동기화(새로고침·공유 복원), 적용된 필터 칩·"필터 전체 해제". 계약 모호점을 OS.md 12.6/6장에 명문화(DECISIONS.md 자동 기록)
 - **수집 파이프라인 구현 (OS.md 12.8)** — fixture(`saramin-job-search.json`, FULL 5+PARTIAL 4) → `SaraminAdapter`(fetchFn 주입, 실행당 최대 5콜) → `Normalizer`(name 키워드 라벨 매핑·dedupKey·dataQuality) → `scripts/collect.ts`(`COLLECT_SOURCE` 스위치, idempotent upsert). `saramin-fixture` 모드로 수집→upsert→`GET /api/jobs` 노출까지 검증(재실행 시 신규 0 확인)
 
+- **루프 지도(`docs/dev-loop-map.html`) + 자동 갱신 훅 `loop-map-context`** — 개발 루프를 사람·AI·CI 3레인으로 시각화(병목/반복/낭비 진단·변경 이력 포함). 루프 구성 파일(훅·스킬·settings·CI)이 수정되면 훅이 "지도 갱신·재발행" 컨텍스트를 자동 주입(**훅 스크립트 6개**, 새 훅은 다음 세션부터 동작). 발행 주소는 지도 파일 머리 주석에
 - **루프 진단 후 낭비 2건 해소** — ① CI 도입(`.github/workflows/ci.yml`: push/PR 마다 db:push→typecheck→test. 원격=백업→검문소) ② `/commit` 스킬에 검증 게이트("초록불 없이 커밋 금지", 문서-only 커밋만 예외). 홈(`~/.claude`)·프로젝트 두 commit 스킬 동기화. **CI 첫 실행 성공 확인(2026-07-13, run #1, 32초)** — 검문소 가동
 - **`ralph-test` 랄프 루프 스킬 + Vitest 도입** — "한 호출 = 한 바퀴(모듈 1개 테스트→통과 확인→커밋→기록)" 구조, 반복은 `/loop /ralph-test` 가 담당. 진행 상태 = `.claude/ralph-test-progress.md`(대상 8건, 우선순위순). 첫 바퀴(Normalizer 15개 테스트)로 절차 검증 완료
 

@@ -1,0 +1,355 @@
+<!--
+  개발 루프 지도 — 이 파일이 원본(SSOT)이다. (세션 임시 폴더 사본은 폐기됨)
+  발행 주소: https://claude.ai/code/artifact/ab4bf390-1a85-4cc6-8061-f38ed7744796
+  갱신 절차: 이 파일을 고친 뒤 Artifact 도구로 재발행 — 반드시 url 파라미터에
+  위 주소를 넣어 같은 주소를 유지한다. 갱신할 때마다 하단 [변경 이력]에 한 줄 추가.
+  루프 구성 파일(훅·스킬·settings.json·CI)이 바뀌면 loop-map-context 훅이
+  이 갱신을 자동으로 촉구한다.
+-->
+<title>개발 루프 지도 — 사람 · AI · CI</title>
+<style>
+  :root {
+    --bg: #F2F5F4;
+    --surface: #FFFFFF;
+    --surface-2: #E9EEEC;
+    --ink: #1C2422;
+    --muted: #5B6663;
+    --line: #D7DFDC;
+    --accent: #0E7A6E;
+    --accent-soft: #0E7A6E1A;
+    --bottleneck: #B6402F;
+    --bottleneck-soft: #B6402F14;
+    --repeat: #96660A;
+    --repeat-soft: #96660A14;
+    --waste: #6B5BB0;
+    --waste-soft: #6B5BB014;
+    --ok: #2E7D4F;
+    --ok-soft: #2E7D4F14;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0F1514; --surface: #171E1D; --surface-2: #1E2726;
+      --ink: #E5EBE9; --muted: #94A19D; --line: #2A3331;
+      --accent: #3FB9A5; --accent-soft: #3FB9A522;
+      --bottleneck: #E0705C; --bottleneck-soft: #E0705C1E;
+      --repeat: #D9A43B; --repeat-soft: #D9A43B1E;
+      --waste: #A08FE0; --waste-soft: #A08FE01E;
+      --ok: #63BE8A; --ok-soft: #63BE8A1E;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F1514; --surface: #171E1D; --surface-2: #1E2726;
+    --ink: #E5EBE9; --muted: #94A19D; --line: #2A3331;
+    --accent: #3FB9A5; --accent-soft: #3FB9A522;
+    --bottleneck: #E0705C; --bottleneck-soft: #E0705C1E;
+    --repeat: #D9A43B; --repeat-soft: #D9A43B1E;
+    --waste: #A08FE0; --waste-soft: #A08FE01E;
+    --ok: #63BE8A; --ok-soft: #63BE8A1E;
+  }
+  :root[data-theme="light"] {
+    --bg: #F2F5F4; --surface: #FFFFFF; --surface-2: #E9EEEC;
+    --ink: #1C2422; --muted: #5B6663; --line: #D7DFDC;
+    --accent: #0E7A6E; --accent-soft: #0E7A6E1A;
+    --bottleneck: #B6402F; --bottleneck-soft: #B6402F14;
+    --repeat: #96660A; --repeat-soft: #96660A14;
+    --waste: #6B5BB0; --waste-soft: #6B5BB014;
+    --ok: #2E7D4F; --ok-soft: #2E7D4F14;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  /* ---------- header ---------- */
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 10px;
+  }
+  h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.25; margin: 0 0 12px; text-wrap: balance; font-weight: 800; }
+  .lede { max-width: 62ch; color: var(--muted); margin: 0 0 8px; }
+  .lede strong { color: var(--ink); font-weight: 700; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 0; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12.5px; font-weight: 600; padding: 4px 12px;
+    border-radius: 999px; border: 1px solid var(--line); background: var(--surface);
+  }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .dot-b { background: var(--bottleneck); } .dot-r { background: var(--repeat); }
+  .dot-w { background: var(--waste); } .dot-o { background: var(--ok); }
+
+  /* ---------- swimlane board ---------- */
+  section { margin-top: 44px; }
+  h2 { font-size: 20px; margin: 0 0 6px; font-weight: 800; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 18px; max-width: 70ch; }
+
+  .board-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+  .board {
+    display: grid;
+    grid-template-columns: 92px repeat(8, minmax(148px, 1fr));
+    min-width: 1240px;
+    padding: 18px 18px 20px;
+    gap: 10px 8px;
+  }
+  .lane-label {
+    grid-column: 1;
+    display: flex; flex-direction: column; justify-content: center; gap: 2px;
+    font-weight: 800; font-size: 14px;
+    border-right: 2px solid var(--line); padding-right: 10px;
+  }
+  .lane-label small { font-weight: 500; color: var(--muted); font-size: 11px; line-height: 1.4; }
+
+  .stepnum {
+    align-self: end;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; gap: 6px; padding: 0 2px 2px;
+  }
+  .stepnum b { color: var(--ink); font-size: 12px; }
+  .stepnum::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .stepnum.last::after { content: "↺"; height: auto; background: none; color: var(--accent); font-size: 13px; flex: none; }
+
+  .card {
+    border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+    padding: 10px 12px 11px; font-size: 13px; line-height: 1.5;
+    display: flex; flex-direction: column; gap: 6px;
+    box-shadow: 0 1px 2px rgb(0 0 0 / .04);
+  }
+  .card h3 { margin: 0; font-size: 13.5px; font-weight: 750; line-height: 1.35; }
+  .card p { margin: 0; color: var(--muted); font-size: 12.5px; }
+  .card code { font-family: var(--mono); font-size: 11px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
+  .lane-human .card { border-top: 3px solid var(--accent); }
+  .lane-ai .card { border-top: 3px solid color-mix(in srgb, var(--accent) 45%, var(--line)); }
+
+  .tag {
+    align-self: flex-start; font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
+    padding: 2px 8px; border-radius: 999px; margin-top: auto;
+  }
+  .tag-b { color: var(--bottleneck); background: var(--bottleneck-soft); }
+  .tag-r { color: var(--repeat); background: var(--repeat-soft); }
+  .tag-w { color: var(--waste); background: var(--waste-soft); }
+  .tag-o { color: var(--ok); background: var(--ok-soft); }
+
+  .ci-empty {
+    grid-column: 2 / -1;
+    border: 1.5px dashed var(--waste); border-radius: 10px;
+    background: var(--waste-soft);
+    padding: 12px 16px; font-size: 13px; line-height: 1.55;
+    display: flex; flex-wrap: wrap; gap: 4px 24px; align-items: baseline;
+  }
+  .ci-empty b { color: var(--waste); }
+  .ci-empty span { color: var(--muted); font-size: 12.5px; }
+
+  .loopback {
+    grid-column: 2 / -1;
+    font-family: var(--mono); font-size: 11.5px; color: var(--accent);
+    border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 2px;
+  }
+
+  .blocked-note {
+    margin-top: 14px; border: 1px solid var(--line); border-left: 4px solid var(--bottleneck);
+    border-radius: 10px; background: var(--surface); padding: 12px 16px; font-size: 13.5px;
+  }
+  .blocked-note b { color: var(--bottleneck); }
+
+  /* ---------- findings ---------- */
+  .findings { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+  .finding {
+    border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
+    padding: 16px 18px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .finding .head { display: flex; align-items: center; gap: 8px; }
+  .finding h3 { margin: 0; font-size: 15px; font-weight: 750; }
+  .finding p { margin: 0; font-size: 13.5px; color: var(--muted); }
+  .finding p strong { color: var(--ink); }
+  .rx {
+    margin-top: 4px; font-size: 13px; border-radius: 8px; padding: 8px 11px;
+    background: var(--accent-soft); color: var(--ink);
+  }
+  .rx b { color: var(--accent); font-family: var(--mono); font-size: 11px; letter-spacing: .1em; margin-right: 6px; }
+  .f-b { border-top: 3px solid var(--bottleneck); }
+  .f-r { border-top: 3px solid var(--repeat); }
+  .f-w { border-top: 3px solid var(--waste); }
+  .f-o { border-top: 3px solid var(--ok); }
+  .finding code { font-family: var(--mono); font-size: 11.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+
+  /* ---------- changelog ---------- */
+  .changelog { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .changelog li {
+    display: flex; gap: 14px; align-items: baseline;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+    padding: 9px 14px; font-size: 13px;
+  }
+  .changelog time { font-family: var(--mono); font-size: 11.5px; color: var(--accent); flex: none; }
+  .changelog .what { color: var(--ink); }
+  .changelog .what small { color: var(--muted); }
+
+  footer { margin-top: 44px; color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 14px; }
+  footer code { font-family: var(--mono); font-size: 11.5px; }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">chaeyong-research · M1 · 살아있는 지도 (루프가 바뀌면 함께 바뀐다)</p>
+  <h1>개발 핵심 루프 지도 — 사람 · AI · CI</h1>
+  <p class="lede">한 기능이 "지시 → 구현 → 검증 → 커밋 → push"를 도는 실제 경로를 세 레인으로 그렸다.
+  결론부터: <strong>AI 레인은 훅·스킬로 잘 자동화됐고, 사람 레인이 유일한 직렬 구간이며, CI 레인은 비어 있었다 — 낭비 2건은 07-09 해소(커밋 c7e8e9a).</strong></p>
+
+  <div class="legend">
+    <span class="chip"><span class="dot dot-b"></span>병목 — 루프가 멈춰 기다리는 곳</span>
+    <span class="chip"><span class="dot dot-r"></span>반복 — 매번 다시 하는 일</span>
+    <span class="chip"><span class="dot dot-w"></span>낭비 — 해도 아무도 안 받는 일 · 안 하는 일</span>
+    <span class="chip"><span class="dot dot-o"></span>해결됨 — 이미 잘 처리한 곳</span>
+  </div>
+
+  <section>
+    <h2>루프 한 바퀴 (기능 단위)</h2>
+    <p class="sub">열 = 순서(01→08), 행 = 실행 주체. 카드 하단 태그가 진단 표시다.</p>
+
+    <div class="board-scroll">
+      <div class="board">
+        <!-- step numbers -->
+        <div></div>
+        <div class="stepnum"><b>01</b></div>
+        <div class="stepnum"><b>02</b></div>
+        <div class="stepnum"><b>03</b></div>
+        <div class="stepnum"><b>04</b></div>
+        <div class="stepnum"><b>05</b></div>
+        <div class="stepnum"><b>06</b></div>
+        <div class="stepnum"><b>07</b></div>
+        <div class="stepnum last"><b>08</b></div>
+
+        <!-- 사람 lane -->
+        <div class="lane-label">사람<small>결정·승인</small></div>
+        <div class="card lane-human" style="grid-column:2">
+          <h3>방향 결정</h3>
+          <p><code>STATUS.md</code> "다음 할 일"을 보고 무엇을 만들지 지시</p>
+        </div>
+        <div style="grid-column:3/7"></div>
+        <div class="card lane-human" style="grid-column:7">
+          <h3>확인 · 승인</h3>
+          <p>결과 검토, 도구 권한 승인, 피드백</p>
+          <span class="tag tag-b">병목 — 유일한 직렬 구간</span>
+        </div>
+        <div style="grid-column:8"></div>
+        <div class="card lane-human" style="grid-column:9">
+          <h3>push (수동)</h3>
+          <p><code>git push</code> — 여기서 CI 레인으로 내려간다</p>
+          <span class="tag tag-o">해결됨 — CI 검문소 신설</span>
+        </div>
+
+        <!-- AI lane -->
+        <div class="lane-label">AI<small>기획·구현·검증</small></div>
+        <div style="grid-column:2"></div>
+        <div class="card lane-ai" style="grid-column:3">
+          <h3>컨텍스트 주입 (자동)</h3>
+          <p>훅 3종이 <code>STATUS.md</code>·스킬 목록·계약을 자동 주입</p>
+          <span class="tag tag-o">해결됨 — 토큰 −14% 실측</span>
+        </div>
+        <div class="card lane-ai" style="grid-column:4">
+          <h3>기획 · 계약</h3>
+          <p>product-planner → <code>OS.md 12장</code> 갱신 → decision-log 훅이 이력 기록</p>
+        </div>
+        <div class="card lane-ai" style="grid-column:5">
+          <h3>구현</h3>
+          <p>backend·frontend 서브에이전트 (handoff 양식으로 위임)</p>
+          <span class="tag tag-r">반복 — 시행착오가 세션 간 증발</span>
+        </div>
+        <div class="card lane-ai" style="grid-column:6">
+          <h3>검증 (로컬)</h3>
+          <p><code>npm run typecheck</code> · <code>npm test</code> · contract-check</p>
+          <span class="tag tag-w">낭비 위험 — 의무 아닌 선택</span>
+        </div>
+        <div style="grid-column:7"></div>
+        <div class="card lane-ai" style="grid-column:8">
+          <h3>커밋</h3>
+          <p><code>/commit</code> 스킬 (push는 하지 않음)</p>
+          <span class="tag tag-o">해결됨 — 검증 게이트 내장</span>
+        </div>
+        <div style="grid-column:9"></div>
+
+        <!-- CI lane -->
+        <div class="lane-label">CI<small>자동 검문</small></div>
+        <div class="ci-empty" style="border-color: var(--ok); background: var(--ok-soft);">
+          <b style="color: var(--ok);">검문소 가동 (07-09 신설).</b>
+          <span><code>.github/workflows/ci.yml</code> — push·PR 마다 <code>npm ci → db:push → typecheck → test</code>. 원격이 "백업"에서 "검문소"가 됐다. 07-13 run #1 성공(32초)으로 가동 확인.</span>
+        </div>
+
+        <div></div>
+        <div class="loopback">08 → STATUS.md 갱신 → 01 로 되돌아감 (루프 반복)</div>
+      </div>
+    </div>
+
+    <div class="blocked-note">
+      <b>루프 밖 블로킹:</b> 사람인 API 승인 대기. 루프가 아무리 빨라져도 M1 완료(실 데이터 수집)는 이 외부 승인에 묶여 있다 — 루프 개선으로는 못 푸는 병목.
+    </div>
+  </section>
+
+  <section>
+    <h2>진단 — 병목 · 반복 · 낭비</h2>
+    <p class="sub">심각한 순서. 각 카드의 처방은 이 프로젝트에서 바로 실행 가능한 최소 조치다.</p>
+
+    <div class="findings">
+      <div class="finding f-o">
+        <div class="head"><span class="dot dot-o"></span><h3>낭비 ① — CI 레인 공백 <em style="font-style:normal;font-size:12px;color:var(--ok);">✓ 07-09 해소</em></h3></div>
+        <p>검증이 전부 "AI가 로컬에서 돌릴 때만" 존재했다. push 뒤 아무도 재검증하지 않으므로,
+        <strong>깨진 커밋이 원격에 올라가도 다음 세션이 시작할 때까지 아무도 몰랐다.</strong></p>
+        <div class="rx"><b>적용</b><code>.github/workflows/ci.yml</code> 신설 — push·PR 마다 <code>npm ci → db:push → typecheck → test</code>. 07-13 run #1 성공(32초)으로 가동 확인.</div>
+      </div>
+
+      <div class="finding f-o">
+        <div class="head"><span class="dot dot-o"></span><h3>낭비 ② — /commit 무게이트 <em style="font-style:normal;font-size:12px;color:var(--ok);">✓ 07-09 해소</em></h3></div>
+        <p>"초록불 없이 커밋 금지"가 <code>ralph-test</code> 스킬 안에만 있었다. 일반 작업은
+        typecheck·test를 건너뛰고도 커밋이 됐다 — 검증이 <strong>절차상 의무가 아니라 선의에 의존</strong>했다.</p>
+        <div class="rx"><b>적용</b>/commit 절차 3단계에 검증 게이트 추가(실패 시 커밋 중단, 문서-only 커밋만 예외). 홈·프로젝트 두 사본이 그림자처럼 겹쳐 있어 둘 다 동기화.</div>
+      </div>
+
+      <div class="finding f-b">
+        <div class="head"><span class="dot dot-b"></span><h3>병목 ① — 사람이 유일한 직렬 구간</h3></div>
+        <p>AI 레인(02~05, 07~08열)은 병렬·자동인데, 확인·승인·push(06·08)는 전부 사람을 기다린다.
+        특히 push가 수동이라 <strong>"커밋됐지만 원격엔 없는" 구간</strong>이 길어진다.</p>
+        <div class="rx"><b>처방</b>구조는 유지(사람 승인은 안전장치다). 대신 읽기 전용 명령을 허용 목록에 등록해 승인 횟수 자체를 줄이고, push는 세션 끝 1회로 묶는다.</div>
+      </div>
+
+      <div class="finding f-r">
+        <div class="head"><span class="dot dot-r"></span><h3>반복 ① — 시행착오가 세션 간 증발</h3></div>
+        <p>바퀴 간 배움 누적은 <code>ralph-test</code>에만 있다. 일반 개발 루프에서 얻은 교훈
+        ("lint 쓰지 마라", "Somansa가 TLS 가로챈다")은 <strong>사람이 CLAUDE.md에 손으로 적어야만</strong> 살아남는다.</p>
+        <div class="rx"><b>처방</b>ralph-test의 📚 규칙("행동을 바꾸는 지식만 한 줄")을 일반화 — 세션 종료 시 배움을 CLAUDE.md·docs에 반영하는 습관/스킬로.</div>
+      </div>
+
+      <div class="finding f-b">
+        <div class="head"><span class="dot dot-b"></span><h3>병목 ② — 외부 승인 (사람인 API)</h3></div>
+        <p>M1 완료 기준(실 데이터 end-to-end)이 외부 승인에 묶여 있다. 루프 개선으로 못 푸는 유일한 병목.</p>
+        <div class="rx"><b>처방</b>기다리는 동안 루프 안 일을 소진: <code>/loop /ralph-test</code>로 테스트 7건 채우기 — 승인 직후 전환(교체 통합)이 하루 안에 끝나게.</div>
+      </div>
+
+      <div class="finding f-o">
+        <div class="head"><span class="dot dot-o"></span><h3>해결됨 — 컨텍스트 재로딩 반복</h3></div>
+        <p>원래 매 세션 STATUS·계약·스킬 목록을 다시 읽는 반복이 있었다. 훅 5종으로 자동 주입해
+        <strong>도구 호출 2→0, 토큰 −14%, 시간 −22%를 실측</strong>했다(docs/context.md의 A/B).
+        "반복은 훅으로 없앤다"는 이 프로젝트가 이미 증명한 패턴이다.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>변경 이력</h2>
+    <p class="sub">루프 구성이 바뀔 때마다 여기에 한 줄씩 쌓인다 — 지도가 언제 왜 다시 그려졌는지의 기록. (루프 파일이 수정되면 <code>loop-map-context</code> 훅이 이 갱신을 자동 촉구한다)</p>
+    <ul class="changelog">
+      <li><time>2026-07-13</time><span class="what">루프 지도 갱신 자동화 — <code>loop-map-context</code> 훅 신설(훅·스킬·settings·CI 수정 감지 → 지도 갱신 촉구), 지도 원본을 저장소(<code>docs/dev-loop-map.html</code>)로 이관, 변경 이력 절 신설</span></li>
+      <li><time>2026-07-13</time><span class="what">CI 첫 실행 성공 확인 — run #1, 32초, 초록불. 검문소 공식 가동 <small>(같은 날 원격 이력 강제 덮어쓰기 사고를 rebase로 수습)</small></span></li>
+      <li><time>2026-07-09</time><span class="what">낭비 ①·② 해소 — CI 워크플로 신설(<code>ci.yml</code>) + <code>/commit</code> 검증 게이트("초록불 없이 커밋 금지" 전면 확장)</span></li>
+      <li><time>2026-07-09</time><span class="what">지도 최초 작성 — 3레인 진단: 병목 2 · 반복 2 · 낭비 2 식별 <small>(같은 날 ralph-test 루프 + Vitest 도입)</small></span></li>
+    </ul>
+  </section>
+
+  <footer>
+    근거: <code>CLAUDE.md</code> · <code>STATUS.md</code> · <code>docs/context.md</code> · <code>.claude/hooks/</code> 실측 · GitHub Actions API 조회. 원본: <code>docs/dev-loop-map.html</code> (2026-07-13 기준).
+  </footer>
+</div>
