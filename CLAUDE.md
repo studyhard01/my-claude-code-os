@@ -43,10 +43,6 @@ npm run eval       # push 게이트 평가 — rubric 은 docs/eval-rubric.md, 1
 - **검증은 `npm run typecheck` + `npm run test` 로 한다.** 계약(`contract.ts`)이 `strict` 로 검사되므로, `deadline`/`description` 의 `null` 미처리나 `JobDTO` 필드 오사용을 typecheck 에서 잡는다. 테스트는 `/ralph-test` 루프(진행 상태 = `.claude/ralph-test-progress.md`)가 모듈별로 채운다. (2026-07-09 기준 둘 다 통과)
 - **`npm run lint` 는 쓰지 말 것.** eslint 설정 파일이 없어 `next lint` 는 **검사를 하지 않고** "ESLint를 어떻게 구성할까요?"를 되묻는다. 터미널에선 멈추고, 에이전트가 실행하면 그냥 실패한다(실측).
 - Prisma 클라이언트가 생성돼 있지 않으면 `typecheck` 가 **계약과 무관한 오류 5개**(`JobWhereInput` 등)를 낸다. `npm install` 뒤 `db:push` 를 반드시 먼저.
-- **이 PC 는 회사 보안 프로그램(Somansa)이 HTTPS 를 가로챈다.** Node 는 그 인증서를 몰라서 `prisma generate`/`db:push` 가 `SELF_SIGNED_CERT_IN_CHAIN` 으로 죽는다(엔진을 `binaries.prisma.sh` 에서 받기 때문). 엔진이 아직 없다면 그 명령에만 붙여 통과시킨다 — 시스템 설정은 건드리지 말 것.
-  ```bash
-  NODE_TLS_REJECT_UNAUTHORIZED=0 npm run db:push   # 최초 1회, 엔진 캐시된 뒤엔 불필요
-  ```
 
 ## 계약 (가장 중요)
 
