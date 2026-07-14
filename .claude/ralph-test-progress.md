@@ -9,7 +9,7 @@
 - [x] `src/lib/collect/normalizer.ts` — 순수 로직. 라벨 매핑·experience 해석·dedupKey·FULL/PARTIAL 판정 (OS.md 12.8) → `tests/lib/collect/normalizer.test.ts` 15개 (2026-07-09, 세팅 겸 수동 1바퀴)
 - [x] `src/lib/format.ts` — 순수 로직. 라벨 변환·날짜 포맷·마감 뱃지(deadlineInfo) → `tests/lib/format.test.ts` 17개 (2026-07-14, 2바퀴)
 - [x] `src/lib/collect/alio-adapter.ts` — (루프 밖에서 완료) 07-14 잡알리오 피벗 작업이 테스트 동반 구현 → `tests/lib/collect/alio-adapter.test.ts`
-- [ ] `src/lib/serialize.ts` — 순수 로직. Prisma Job → JobDTO 직렬화 (OS.md 12.3/12.4)
+- [x] `src/lib/serialize.ts` — 순수 로직. Prisma Job → JobDTO 직렬화 (OS.md 12.3/12.4) → `tests/lib/serialize.test.ts` 8개 (2026-07-14, 3바퀴. Prisma 행은 리터럴로 흉내 — DB 불필요)
 - [ ] `src/lib/collect/saramin-adapter.ts` — fetchFn 주입으로 네트워크 없이 테스트 가능. 페이지 순회·5콜 상한·관대한 파싱
 - [ ] `src/lib/api.ts` — fetch 목킹 필요. 쿼리 직렬화·에러 처리
 - [ ] `src/app/api/jobs/route.ts` — DB 필요(후순위). 정렬·필터·totalCount 규약 (OS.md 12.6)
