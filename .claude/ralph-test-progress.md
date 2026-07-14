@@ -10,7 +10,7 @@
 - [x] `src/lib/format.ts` — 순수 로직. 라벨 변환·날짜 포맷·마감 뱃지(deadlineInfo) → `tests/lib/format.test.ts` 17개 (2026-07-14, 2바퀴)
 - [x] `src/lib/collect/alio-adapter.ts` — (루프 밖에서 완료) 07-14 잡알리오 피벗 작업이 테스트 동반 구현 → `tests/lib/collect/alio-adapter.test.ts`
 - [x] `src/lib/serialize.ts` — 순수 로직. Prisma Job → JobDTO 직렬화 (OS.md 12.3/12.4) → `tests/lib/serialize.test.ts` 8개 (2026-07-14, 3바퀴. Prisma 행은 리터럴로 흉내 — DB 불필요)
-- [ ] `src/lib/collect/saramin-adapter.ts` — fetchFn 주입으로 네트워크 없이 테스트 가능. 페이지 순회·5콜 상한·관대한 파싱
+- [x] `src/lib/collect/saramin-adapter.ts` — fetchFn 주입으로 네트워크 없이 테스트. 페이지 순회·5콜 상한·관대한 파싱·부분 실패 허용 → `tests/lib/collect/saramin-adapter.test.ts` 10개 (2026-07-14, 4바퀴)
 - [ ] `src/lib/api.ts` — fetch 목킹 필요. 쿼리 직렬화·에러 처리
 - [ ] `src/app/api/jobs/route.ts` — DB 필요(후순위). 정렬·필터·totalCount 규약 (OS.md 12.6)
 - [ ] `src/app/api/bookmarks/route.ts` + `[id]/route.ts` — DB 필요(후순위)
@@ -25,5 +25,6 @@
 > 기록 규칙은 SKILL.md 참조: "다음 바퀴의 행동을 바꾸는 지식"만, 한 줄로.
 
 - (1바퀴, 2026-07-09) 기대값을 짐작으로 쓰지 말고 소스를 먼저 읽을 것 — `RawJob.raw` 는 필수 필드라 빈 객체 `{}` 여도 `rawData` 는 null 이 아니라 `"{}"` 로 저장된다(A-3 원문 보존).
+- (4바퀴, 2026-07-14) `vi.fn(async () => …)` 처럼 **인자 없는 구현으로 만든 mock 은 `mock.calls[0][0]` 접근이 타입 오류**(tuple `[]`) — 호출 인자를 검증할 mock 은 시그니처를 인자에 명시(`vi.fn(async (_input: RequestInfo | URL) => …)`). 테스트는 통과해도 typecheck 가 잡는다.
 - (2바퀴, 2026-07-14) 시간 고정(`vi.setSystemTime`)은 **03:00Z처럼 UTC와 KST 어느 시간대에서도 같은 날짜가 되는 시각**으로 — 소스가 로컬/UTC 날짜를 섞어 쓰므로(daysUntilDeadline), 20:00Z 같은 경계 시각이면 CI(UTC)와 로컬(KST)의 "오늘"이 달라져 한쪽만 깨진다.
 - (1바퀴, 2026-07-09) 날짜 기대값은 UTC 로 계산해 리터럴로 박는다 — 예: `"2026-07-31T23:59:59+0900"` → `"2026-07-31T14:59:59.000Z"`. 테스트 안에서 `new Date()` 로 재계산하면 검증이 무의미해진다.
