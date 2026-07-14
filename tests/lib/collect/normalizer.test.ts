@@ -58,6 +58,7 @@ describe("mapExperience — code 우선, name 폴백 (12.8)", () => {
   it("name 폴백: '신입/경력'·'무관'을 '신입'/'경력'보다 먼저 판정한다", () => {
     expect(mapExperience("신입/경력")).toEqual({ level: "ANY", resolved: true });
     expect(mapExperience("경력무관")).toEqual({ level: "ANY", resolved: true });
+    expect(mapExperience("관계없음")).toEqual({ level: "ANY", resolved: true }); // 워크넷 표현
     expect(mapExperience("신입")).toEqual({ level: "NEW", resolved: true });
     expect(mapExperience("경력 3년↑")).toEqual({ level: "EXPERIENCED", resolved: true });
   });
@@ -89,6 +90,9 @@ describe("normalizeRawJob — RawJob → JobUpsertInput", () => {
       url: "https://example.com/1",
       title: " 백엔드 개발자 ",
       companyName: "(주)토스뱅크",
+      // [12.8(1) 2026-07-14] name 은 정규 필드로 승격 — Normalizer 는 raw 를 읽지 않는다
+      jobRoleName: "웹개발, 백엔드/서버개발",
+      locationName: "서울 > 강남구",
       experienceRaw: "1",
       employmentType: "정규직",
       deadline: "2026-07-31T23:59:59+0900",
@@ -145,8 +149,7 @@ describe("normalizeRawJob — RawJob → JobUpsertInput", () => {
 
   it("라벨 매핑 하나라도 실패하면 PARTIAL (나머지 필드는 유지)", () => {
     const raw = fullRaw();
-    (raw.raw as { position: { location: { name: string } } }).position.location.name =
-      "제주 > 전체";
+    raw.locationName = "제주 > 전체"; // 미매핑 지역 → location null
     const out = normalizeRawJob(raw);
     expect(out.dataQuality).toBe("PARTIAL");
     expect(out.location).toBeNull();

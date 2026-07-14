@@ -26,8 +26,16 @@ export interface RawJob {
   // --- 있으면 채우는 정규화 힌트 필드(없으면 undefined → Normalizer 가 PARTIAL 판정) ---
   title?: string;
   companyName?: string;
-  jobRoleCode?: string; // 소스별 직무 코드(예: 사람인 job_cd) → Normalizer 가 라벨 매핑
+  jobRoleCode?: string; // 소스별 직무 코드 원문(예: 사람인 job_cd) — 라벨 매핑에는 안 쓰고 보존용
+  /**
+   * [12.8(1) 2026-07-14 승격] 직무명 원문(사람인 job-code.name, 워크넷 jobsNm 등).
+   * 소스별 응답 구조 해석은 각 어댑터 책임이며, Normalizer 는 이 정규 필드만 보고
+   * 키워드 매핑한다(raw 직접 참조 금지).
+   */
+  jobRoleName?: string;
   locationCode?: string;
+  /** [12.8(1) 2026-07-14 승격] 지역명 원문(사람인 location.name, 워크넷 region 등) */
+  locationName?: string;
   experienceRaw?: string;
   employmentType?: string;
   deadline?: string; // ISO or 소스 원문
@@ -75,7 +83,11 @@ export class MockAdapter implements SourceAdapter {
         title: "백엔드 개발자 (Node.js/TypeScript) 신입",
         companyName: "토스뱅크",
         jobRoleCode: "TBD-be",
+        // [12.8(1)] Normalizer 는 정규 필드(jobRoleName/locationName)만 본다.
+        //   mock 이 FULL 판정을 유지하려면 여기서 직접 채워야 한다(12.8(4) mock 정합 규약).
+        jobRoleName: "웹개발, 백엔드/서버개발",
         locationCode: "101000", // 예: 서울 지역코드(placeholder)
+        locationName: "서울 > 전체",
         experienceRaw: "신입",
         employmentType: "정규직",
         deadline: "2026-07-05",
@@ -88,8 +100,8 @@ export class MockAdapter implements SourceAdapter {
         raw: {
           // [A-3] 회사 식별 힌트가 응답에 있으면 여기에 원문 보존
           company: { name: "토스뱅크", corp_no: null, biz_no: null },
-          // Normalizer 의 name 기반 라벨 매핑(12.8)이 mock 에서도 동작하도록
-          // 사람인 응답과 같은 위치(position.*.name)에 name 힌트를 담는다.
+          // (2026-07-14 이후 Normalizer 는 raw 를 읽지 않지만,
+          //  실 사람인 응답 형태 기록·A-3 보존 목적으로 원본 구조를 유지한다)
           position: {
             "job-code": { code: "TBD-be", name: "웹개발, 백엔드/서버개발" },
             location: { code: "101000", name: "서울 > 전체" },

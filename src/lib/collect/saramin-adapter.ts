@@ -133,7 +133,10 @@ export class SaraminAdapter implements SourceAdapter {
       title: asStr(position.title),
       companyName: asStr(companyDetail.name),
       jobRoleCode: asStr(asDict(position["job-code"]).code),
+      // [12.8(1) 승격] 소스별 구조 해석(position.*.name)은 어댑터 책임 — Normalizer 는 정규 필드만 본다
+      jobRoleName: asStr(asDict(position["job-code"]).name),
       locationCode: asStr(asDict(position.location).code),
+      locationName: asStr(asDict(position.location).name),
       experienceRaw: asStr(asDict(position["experience-level"]).code),
       employmentType: asStr(asDict(position["job-type"]).name),
       deadline: asStr(job["expiration-date"]),

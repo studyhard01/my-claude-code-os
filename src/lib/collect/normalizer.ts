@@ -1,9 +1,10 @@
 // ============================================================================
 // Normalizer — RawJob → JobUpsertInput (OS.md 12.8 (2)(3))
 // ----------------------------------------------------------------------------
-// - 라벨 매핑은 사람인 코드표가 아니라 "응답 name 필드 키워드 매핑"(12.8 결정).
-//   name(job-code.name / location.name)은 어댑터가 raw 에 원본 그대로 보존하므로
-//   여기서 관대하게 꺼낸다(형태가 다르면 undefined → null → PARTIAL).
+// - 라벨 매핑은 코드표가 아니라 "응답 name 필드 키워드 매핑"(12.8 결정).
+//   [2026-07-14 개정] name 은 raw 직접 참조가 아니라 RawJob 정규 필드
+//   jobRoleName/locationName 에서 읽는다 — 소스별 응답 구조 해석(사람인 JSON,
+//   워크넷 XML)은 각 어댑터가 담당하고, Normalizer 는 소스 비종속으로 유지(12.8(1)).
 //   code 원문은 RawJob.jobRoleCode/locationCode + raw 에 남는다(코드표 유지 부담 제거).
 // - dataQuality 판정(12.8): title/companyName 누락(placeholder 대체), jobRole null,
 //   location null, experience 해석 실패 → PARTIAL.
@@ -51,26 +52,6 @@ const LOCATION_KEYWORDS: Array<{ value: string; keywords: string[] }> = [
   { value: "원격", keywords: ["원격", "재택"] },
 ];
 
-// ---- raw 접근 헬퍼 (소스 응답 형태에 관대) ----
-
-type Dict = Record<string, unknown>;
-
-function asDict(v: unknown): Dict {
-  return v !== null && typeof v === "object" ? (v as Dict) : {};
-}
-
-function asStr(v: unknown): string | undefined {
-  if (typeof v === "number") return String(v);
-  if (typeof v !== "string") return undefined;
-  const s = v.trim();
-  return s === "" ? undefined : s;
-}
-
-/** raw(사람인 job 객체)에서 position.<key>.name 을 꺼낸다. 없으면 undefined */
-function nameFromRaw(raw: Dict, key: "job-code" | "location"): string | undefined {
-  return asStr(asDict(asDict(raw.position)[key]).name);
-}
-
 function matchKeyword(
   table: Array<{ value: string; keywords: string[] }>,
   name: string | undefined,
@@ -115,7 +96,9 @@ export function mapExperience(rawValue: string | undefined): {
       return { level: "EXPERIENCED", resolved: true };
   }
   // name 폴백 — "신입/경력" 을 "신입"/"경력"보다 먼저 검사
-  if (v.includes("신입/경력") || v.includes("무관")) return { level: "ANY", resolved: true };
+  // "관계없음" 은 워크넷 career 표현(무관과 동일 의미)
+  if (v.includes("신입/경력") || v.includes("무관") || v.includes("관계없음"))
+    return { level: "ANY", resolved: true };
   if (v.includes("신입")) return { level: "NEW", resolved: true };
   if (v.includes("경력")) return { level: "EXPERIENCED", resolved: true };
   return { level: "ANY", resolved: false };
@@ -148,8 +131,6 @@ export function computeDedupKey(
 
 /** RawJob → JobUpsertInput. 시그니처는 12.8 계약 고정. */
 export function normalizeRawJob(raw: RawJob): JobUpsertInput {
-  const rawDict = asDict(raw.raw);
-
   // --- PARTIAL 사유 수집 ---
   let partial = false;
 
@@ -165,10 +146,11 @@ export function normalizeRawJob(raw: RawJob): JobUpsertInput {
     partial = true;
   }
 
-  const jobRole = mapJobRole(nameFromRaw(rawDict, "job-code"));
+  // [12.8(1) 2026-07-14] 정규 필드만 본다 — raw 직접 참조 제거(소스 비종속)
+  const jobRole = mapJobRole(raw.jobRoleName);
   if (jobRole == null) partial = true;
 
-  const location = mapLocation(nameFromRaw(rawDict, "location"));
+  const location = mapLocation(raw.locationName);
   if (location == null) partial = true;
 
   const exp = mapExperience(raw.experienceRaw);
