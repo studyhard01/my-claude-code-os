@@ -19,6 +19,9 @@ next-env.d.ts
 # prisma / sqlite (dev DB 는 커밋하지 않음)
 /prisma/dev.db
 /prisma/dev.db-journal
+# 테스트 전용 DB (vitest globalSetup 이 생성)
+/prisma/test.db
+/prisma/test.db-journal
 
 # decision-log hook 부산물 (OS.md 직전본 스냅샷 · 실패 흔적)
 /.claude/.os-snapshot.md

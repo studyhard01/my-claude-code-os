@@ -12,7 +12,7 @@
 - [x] `src/lib/serialize.ts` — 순수 로직. Prisma Job → JobDTO 직렬화 (OS.md 12.3/12.4) → `tests/lib/serialize.test.ts` 8개 (2026-07-14, 3바퀴. Prisma 행은 리터럴로 흉내 — DB 불필요)
 - [x] `src/lib/collect/saramin-adapter.ts` — fetchFn 주입으로 네트워크 없이 테스트. 페이지 순회·5콜 상한·관대한 파싱·부분 실패 허용 → `tests/lib/collect/saramin-adapter.test.ts` 10개 (2026-07-14, 4바퀴)
 - [x] `src/lib/api.ts` — 쿼리 직렬화·역직렬화(왕복 보존)·에러 변환·204 처리. 전역 fetch 는 `vi.stubGlobal` 로 목킹 → `tests/lib/api.test.ts` 14개 (2026-07-14, 5바퀴)
-- [ ] `src/app/api/jobs/route.ts` — DB 필요(후순위). 정렬·필터·totalCount 규약 (OS.md 12.6)
+- [x] `src/app/api/jobs/route.ts` — 정렬·필터·PARTIAL 집계·커서 규약 (OS.md 12.6) → `tests/app/api/jobs/route.test.ts` 8개 (2026-07-14, 6바퀴. 테스트 전용 prisma/test.db 격리 구축)
 - [ ] `src/app/api/bookmarks/route.ts` + `[id]/route.ts` — DB 필요(후순위)
 - [ ] `scripts/collect.ts` — DB 필요(후순위). idempotent upsert(재실행 시 신규 0)
 
@@ -25,6 +25,7 @@
 > 기록 규칙은 SKILL.md 참조: "다음 바퀴의 행동을 바꾸는 지식"만, 한 줄로.
 
 - (1바퀴, 2026-07-09) 기대값을 짐작으로 쓰지 말고 소스를 먼저 읽을 것 — `RawJob.raw` 는 필수 필드라 빈 객체 `{}` 여도 `rawData` 는 null 이 아니라 `"{}"` 로 저장된다(A-3 원문 보존).
+- (6바퀴, 2026-07-14) **DB 라우트 테스트 격리 패턴이 구축돼 있다**: globalSetup(`tests/setup/global-db.ts`)이 `prisma/test.db` 에 스키마 push, setupFiles(`env-db.ts`)가 import 전에 DATABASE_URL 교체, `fileParallelism:false` 로 경합 방지. 다음 DB 테스트(bookmarks·collect)는 `mkJob`+`deleteMany` 패턴만 따라 쓰면 된다. 만료 판정 등 실시간 의존은 먼 과거(2020)/미래(2030) 날짜로 회피.
 - (4바퀴, 2026-07-14) `vi.fn(async () => …)` 처럼 **인자 없는 구현으로 만든 mock 은 `mock.calls[0][0]` 접근이 타입 오류**(tuple `[]`) — 호출 인자를 검증할 mock 은 시그니처를 인자에 명시(`vi.fn(async (_input: RequestInfo | URL) => …)`). 테스트는 통과해도 typecheck 가 잡는다.
 - (2바퀴, 2026-07-14) 시간 고정(`vi.setSystemTime`)은 **03:00Z처럼 UTC와 KST 어느 시간대에서도 같은 날짜가 되는 시각**으로 — 소스가 로컬/UTC 날짜를 섞어 쓰므로(daysUntilDeadline), 20:00Z 같은 경계 시각이면 CI(UTC)와 로컬(KST)의 "오늘"이 달라져 한쪽만 깨진다.
 - (1바퀴, 2026-07-09) 날짜 기대값은 UTC 로 계산해 리터럴로 박는다 — 예: `"2026-07-31T23:59:59+0900"` → `"2026-07-31T14:59:59.000Z"`. 테스트 안에서 `new Date()` 로 재계산하면 검증이 무의미해진다.
