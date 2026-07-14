@@ -29,8 +29,12 @@
 
 import type { RawJob, SourceAdapter } from "./source-adapter";
 
-/** 워크넷 채용정보 목록 API (실키 발급 후 대조 항목 1) */
-const API_URL = "https://openapi.work.go.kr/opi/opi/opia/wantedApi.do";
+/**
+ * 워크넷 채용정보 목록 API — 고용24 이관 후 공식 명세로 확정 (2026-07-14 실측):
+ * work24.go.kr Open API 소개 페이지 기준. returnType=xml 필수, display 상한 100,
+ * startPage 상한 1000. (체크리스트 항목 1 해소 — 남은 대조: 응답 태그명·직종코드)
+ */
+const API_URL = "https://www.work24.go.kr/cm/openApi/call/wk/callOpenApiSvcInfo210L01.do";
 
 /**
  * 직종코드 — 개발직군 한정 파라미터 (실키 발급 후 대조 항목 3).
@@ -164,7 +168,7 @@ export class WorknetAdapter implements SourceAdapter {
       const params = new URLSearchParams({
         authKey: this.apiKey,
         callTp: "L", // 목록 조회
-        returnType: "XML",
+        returnType: "xml", // 공식 명세 필수값(소문자)
         occupation: OCCUPATION_CODE_IT, // 개발직군 한정(코드 불확실 — 최종 판정은 Normalizer)
         display: String(COUNT_PER_CALL),
         startPage: String(page),
