@@ -112,7 +112,9 @@
 ```
 
 - **데이터 소스 후보**
-  - 공고: 사람인(공개 API)·워크넷/고용24(공공 API, 2026-07-14 추가)·관심 회사 채용 페이지. (잡코리아·원티드·링크드인 등은 공식 API 제공 시에만 후보 — 아래 크롤링 금지 참조)
+  - 공고: 사람인(공개 API)·잡알리오(공공기관 채용정보 공공 API, 2026-07-14 확정)·관심 회사 채용 페이지. (잡코리아·원티드·링크드인 등은 공식 API 제공 시에만 후보 — 아래 크롤링 금지 참조)
+    - **워크넷(고용24) 채용정보목록 API 는 개인 발급 불가**(2026-07-14 실측). 고용24 원문상 개인회원은 채용행사·공채속보·공채기업정보만 열람 가능하고, 채용정보목록/상세는 **민간(직업소개·직업정보제공기관) 자격 + 사업자등록증 + 직업정보제공사업 신고확인증**을 요구한다. 개인 취준생 프로젝트로는 요건 미충족 → 제2 소스 후보에서 제외.
+    - **잡알리오(재정경제부_공공기관 채용정보 조회서비스)**: 공공데이터포털 ID `15125273`. 개인 개발계정 **자동승인**(2026-07-14 실측 발급·호출 성공), 일 1,000콜·활용기간 24개월, 이용허락범위 제한 없음. 전 공공기관 111,801건(정보통신 `ncsCdLst=R600020` 필터 시 8,565건) — 개발직군은 롱테일이나 상당수 존재. 사람인(민간·본문 없음)과 상보적. 상세는 12.8(5).
   - 공시: 전자공시시스템(DART) 등 공개 공시.
   - 인재상/핵심가치: 회사 홈페이지·채용 페이지 등 공개 정보.
 - **수집 방식 (결정됨)**: 3단계 폴백 전략
@@ -146,7 +148,7 @@
   - 1~2개 소스에서 공고 수집 → 정규화 → 조건 필터 피드 + 북마크.
   - **M1의 "모아보기" 체감** = 내 조건 필터·마감임박 정렬로 여러 사이트 순회를 대체하는 것. 실제 **중복 병합 체감은 M3부터**(M1은 dedupKey 계산·저장만; 계약의 `sources[]`/`duplicateCount`는 자리만 확보).
   - **직무 범위: 개발직군 한정**(11장 결정). 온보딩 직무 선택지·사람인 job_cd 매핑을 개발직군으로 좁혀 시작.
-  - **제2 소스: 워크넷(고용24) 공공 채용정보 API 어댑터**(2026-07-14 추가) — 사람인 승인 대기 리스크 헤지. 공공데이터포털 자동승인으로 즉시 가동 가능. **계약(contract.ts·API 8종) 변경 없음**(어댑터 추가일 뿐). 보조 소스(중소기업·롱테일 커버리지). 상세는 12.8(5).
+  - **제2 소스: 잡알리오(공공기관 채용정보 공공 API) 어댑터**(2026-07-14 확정 — 워크넷에서 교체, 11장 정정 참조). 개인 개발계정 자동승인으로 **오늘 실 데이터 발급·호출 성공** → 사람인 승인 대기와 무관하게 실수집 파이프라인을 즉시 검증 가능. **계약(contract.ts·API 8종) 변경 없음**(어댑터 추가일 뿐). 성격은 **보조 소스(공공기관 IT직 롱테일)** — 사람인(민간 광역, 본문 없음)의 커버리지를 대체하지 않고 보완(본문 텍스트로 description 을 채워 사람인의 본문 부재를 메움). 상세는 12.8(5).
 - **M2 — 회사 구독 + 회사 리서치** (2026-07-14 재편: 축을 "회사 구독"으로)
   - **M2a — 회사 구독 라이트**: Company 엔티티 + 사용자↔회사 구독 관계, 온보딩 "관심 회사 등록"(선택), 피드 "구독 회사만" 필터 축, 회사-공고 연결 + 원문 URL 노출. 계약 초안은 12.9.
   - **M2b — 회사 리서치**: 구독 회사를 진입 구조로 공시 요약 + 인재상 정리(LLM, 자소서 관점) + 리서치 노트.
@@ -174,7 +176,8 @@
 - **개발 실행 구조**: 12장 참조(스택·아키텍처·M1 계약 확정).
 - **M1 인증**: 실제 로그인 없이 **단일 로컬 사용자(고정 userId)** 로 진행. 정식 인증·개인화는 M2~M3에서 도입.
 - **직무 영역 범위**: **M1은 개발직군 한정**으로 좁게 시작, 이후 일반 직군으로 확장(실습 규모·라벨 매핑 최소화·확장 용이).
-- **제2 수집 소스(2026-07-14)**: M1에 **워크넷(고용24) 공공 채용정보 API** 어댑터 추가. 사람인 승인 대기 리스크 헤지, 계약 변경 없음(9장·12.8(5)).
+- ~~**제2 수집 소스(2026-07-14)**: M1에 **워크넷(고용24) 공공 채용정보 API** 어댑터 추가. 사람인 승인 대기 리스크 헤지, 계약 변경 없음.~~ **[정정됨 — 아래 참조]**
+- **제2 수집 소스 정정(2026-07-14)**: 위 "워크넷=자동승인 즉시 가동" 결정은 **사실과 달랐다** — 워크넷 채용정보목록 API 는 민간 자격+사업자등록증+직업정보제공사업 신고확인증을 요구해 **개인 발급 불가**(실측). 제2 소스를 **잡알리오(공공기관 채용정보 공공 API, 공공데이터포털 15125273)** 로 대체한다. 개인 개발계정 자동승인·실 호출 성공 확인, 계약 변경 없음, 성격은 보조 소스(공공기관 IT직 롱테일). WorknetAdapter 는 폐기. (7장·9장·12.7·12.8(5))
 - **M2 축 재편(2026-07-14)**: M2를 **"회사 구독(라이트)"** 중심으로 재편. 피드(발견)는 유지하고 구독 레이어(추적)를 얹는다(5.3·9장·12.9).
 - **채용 플랫폼 크롤링 금지(2026-07-14)**: 사람인·잡코리아·원티드 등 플랫폼 크롤링은 하지 않는다(7장, 잡코리아 v 사람인 판례). 회사 공식 채용 페이지 수집은 원칙 하에 허용.
 
@@ -208,7 +211,7 @@
                                                           │  upsert (정규화·dedup 후)
 [가공] Collector 모듈 : Normalizer(RawJob→Job, 코드→라벨 매핑) + dedupKey 계산(병합은 M3)
                                                           │  fetchRaw(): RawJob[]
-[수집] Source Adapter (공통 인터페이스) : ① SaraminAdapter·WorknetAdapter(공개/공공 API, M1) → ②회사 채용 페이지(ATS 어댑터, M3) → ③DART(M2)
+[수집] Source Adapter (공통 인터페이스) : ① SaraminAdapter·AlioAdapter(공개/공공 API, M1) → ②회사 채용 페이지(ATS 어댑터, M3) → ③DART(M2)
                                           폴백: 수집 실패 시 url 만 채워 전달
    실행: M1 = 수동 `npm run collect` (배치/스케줄러는 M3)
 ```
@@ -292,7 +295,7 @@ type JobDTO = Job & {
 - **backend**: 스캐폴딩 → Prisma 스키마 → **타입 export + Mock seed 공개(프론트 unblock)** → SaraminAdapter(API 우선, 약관/robots 점검) → Normalizer(코드→라벨, **개발직군 job_cd 한정**)+dedupKey → API. 사람인 API는 이용신청→승인 + 하루 500콜·요청당 count≈110 상한 → day-1은 mock, 승인 후 실수집 교체.
   - **B-1 어댑터 소스 비종속**: SaraminAdapter를 특별 취급하지 말고 공통 `SourceAdapter` 인터페이스만 준수한다. 사람인 API 승인 지연/실패 시 다른 소스 어댑터로 즉시 교체 가능하게(구조적 보험).
   - **A-3 회사 식별 힌트 보존**: M1 수집 시 회사 식별 가능한 원본 필드(사업자번호·법인명 원문 등이 사람인 응답에 있으면)를 버리지 말고 raw로라도 보존한다(M2 DART 공시 연결 대비).
-  - **B-2 WorknetAdapter(2026-07-14 추가)**: 12.8(5) 참조. 승인 절차 없이 즉시 가동 가능한 첫 실수집 소스 — 사람인 승인 대기 중 우선 구현 후보.
+  - **B-2 AlioAdapter(2026-07-14 확정 — 워크넷 폐기 후 교체)**: 12.8(5) 참조. 개인 개발계정 자동승인으로 즉시 가동 가능한 **첫 실수집 소스**(실 호출 검증 완료) — 사람인 승인 대기 중 우선 구현 후보. 어댑터 교체는 수집 계층 내부이며 B-1(소스 비종속) 원칙에 따라 SaraminAdapter·프론트 계약에 영향 없음.
 - **frontend**: 온보딩 → 피드(카드·필터·마감임박순·북마크 토글·상태 뱃지) → 상세(요건+리서치 진입점 placeholder+원문 폴백) → 저장(상태 관리) → 빈/로딩/에러+폴백 UX.
 - **순서**: ①기획 계약 확정(본 장) → ②backend 타입+Mock 공개 → ③frontend·backend 병렬 → ④Mock→실 API 교체로 통합. **M1 완료 기준 = "온보딩→피드→북마크"가 끝까지 도는 것.**
 
@@ -305,7 +308,7 @@ type JobDTO = Job & {
 - 단일 출처: `src/lib/collect/source-adapter.ts` 의 `SourceAdapter`(`source: string` + `fetchRaw(params?): Promise<RawJob[]>`)와 `RawJob`. 이 파일이 수집 계층 타입의 원본이며 12.2 B-1(소스 비종속)을 따른다.
 - `SaraminAdapter`는 **fetch 함수를 주입받는다**: `new SaraminAdapter({ accessKey, fetchFn = globalThis.fetch })`. fixture 테스트는 가짜 fetchFn 주입으로 **실 파싱 코드를 그대로** 태운다.
 - 사람인 job-search 응답 → RawJob 매핑: `id→sourceJobId`, `url→url`, `position.title→title`, `company.detail.name→companyName`, `position."job-code".code→jobRoleCode`, `position."job-code".name→jobRoleName`(2026-07-14 승격), `position.location.code→locationCode`, `position.location.name→locationName`(2026-07-14 승격), `position."experience-level".code→experienceRaw`, `position."job-type".name→employmentType`, `expiration-date→deadline`, `posting-date→postedAt`, **원본 job 객체 전체→raw**(A-3). 필드명·구조는 승인 후 실응답으로 최종 검증.
-- **[확정 — 2026-07-14, 워크넷 어댑터 추가에 따름]** RawJob 에 `jobRoleName`/`locationName` 정규 필드를 **승격한다**. 소스별 응답 구조 해석(사람인 JSON `position.*.name`, 워크넷 XML 등)은 **각 어댑터가 담당**하고, Normalizer 는 **정규 필드만 본다**(raw 직접 참조 제거). 기존 name 기반 키워드 매핑 테이블은 그대로 재사용.
+- **[확정 — 2026-07-14, 다중 소스 대비]** RawJob 에 `jobRoleName`/`locationName` 정규 필드를 **승격한다**. 소스별 응답 구조 해석(사람인 JSON `position.*.name`, 잡알리오 JSON `ncsCdNmLst`/`workRgnNmLst` 등)은 **각 어댑터가 담당**하고, Normalizer 는 **정규 필드만 본다**(raw 직접 참조 제거). 기존 name 기반 키워드 매핑 테이블은 그대로 재사용. (이 승격 결정은 워크넷 폐기·잡알리오 교체와 무관하게 유효 — 근거는 "소스별 구조를 어댑터가 흡수"라는 B-1 원칙.)
 - 요청 규약: `job_mid_cd=2`(IT개발·데이터) 고정, `count=110`, `start` 페이지 순회. 쿼터(하루 500콜) 보호를 위해 M1 수집은 **1회 실행당 최대 5콜** 상한.
 
 **(2) Normalizer 입출력 (신규 확정)**
@@ -322,18 +325,23 @@ type JobDTO = Job & {
 - unique 아님(12.3). 헬퍼 `computeDedupKey(companyName, jobRole, location)` 를 normalizer 에서 export.
 
 **(4) 수집 소스 스위치 — 환경변수 (신규 확정)**
-- `COLLECT_SOURCE` = `mock`(기본) | `saramin-fixture` | `saramin` | `worknet`(2026-07-14 추가). `scripts/collect.ts` 가 이 값으로 어댑터를 선택.
+- `COLLECT_SOURCE` = `mock`(기본) | `saramin-fixture` | `saramin` | `alio-fixture` | `alio`(2026-07-14 확정 — 워크넷 대체). `scripts/collect.ts` 가 이 값으로 어댑터를 선택. **B-1(어댑터 소스 비종속) 원칙은 그대로** — 스위치는 공통 `SourceAdapter` 를 갈아끼울 뿐.
   - `saramin-fixture`: SaraminAdapter 에 로컬 fixture 를 반환하는 가짜 fetchFn 주입 → **실 파싱·정규화·upsert 경로 전체를 승인 전에 검증**.
   - `saramin`: 실 API 호출. `SARAMIN_ACCESS_KEY` 필수(없으면 즉시 명확한 에러로 종료, 조용한 폴백 금지).
-- fixture 위치: `src/lib/collect/fixtures/saramin-job-search.json` — 사람인 job-search 응답 형태(`{ jobs: { count, start, total, job: [...] } }`), 개발직군 5~10건 + **필드 누락 PARTIAL 케이스 최소 2건** 포함.
+  - `alio-fixture`: AlioAdapter 에 로컬 fixture 를 반환하는 가짜 fetchFn 주입 → 실 파싱·정규화·upsert 경로 검증(saramin-fixture 와 동일 패턴).
+  - `alio`: 실 API 호출. `ALIO_API_KEY` 필수(없으면 즉시 명확한 에러로 종료, 조용한 폴백 금지). **자동승인 계정이라 M1 단계에서 실 검증 가능.**
+- fixture 위치: `src/lib/collect/fixtures/saramin-job-search.json` — 사람인 job-search 응답 형태(`{ jobs: { count, start, total, job: [...] } }`), 개발직군 5~10건 + **필드 누락 PARTIAL 케이스 최소 2건** 포함. 잡알리오는 `src/lib/collect/fixtures/alio-recruitment-list.json`(잡알리오 list 응답 형태, `ncsCdLst=R600020` 개발직군 표본).
 - 수집 진입점 파이프라인(고정): `adapter.fetchRaw()` → `normalizeRawJob()` → `prisma.job.upsert({ where: { source_sourceJobId } })`(idempotent) → 수집 요약 로그(총·FULL·PARTIAL 건수). **고정 규약은 mock 에도 동일 적용**(mock 만 upsert 생략 금지 — 경로 분기는 실전환 시 검증 공백을 만든다).
 - **mock 데이터 정합 규약**: MockAdapter 데이터는 seed 행과 upsert 키(`source, sourceJobId`)가 겹칠 수 있으므로, normalize 시 **FULL 판정이 가능한 힌트(name·description 등)를 포함**해야 한다 — 기본 `npm run collect` 가 seed 된 FULL 행을 PARTIAL 로 강등시키지 않기 위함.
 
-**(5) WorknetAdapter (신규 — 2026-07-14 결정, 계약 변경 없음)**
-- 소스: 워크넷(고용24) 공공 채용정보 API(공공데이터포털, **자동승인** — 즉시 가동 가능). `source = "worknet"`.
-- 특성: **XML 응답** — 파싱과 RawJob 정규 필드(`jobRoleName`/`locationName` 등) 변환은 어댑터 내부에서 처리((1) 확정 항목). 중소기업·롱테일 위주의 **보조 소스**(사람인 커버리지를 대체하지 않음). 직종코드로 **개발직군 한정** 요청.
-- 상세 API 에 본문성 텍스트가 있어 `description` 을 채울 수 있음(사람인과 달리 null 아닐 수 있음 — 프론트 원문 URL 폴백 규약은 그대로 유효).
-- 파이프라인 고정 규약((4)의 `fetchRaw → normalizeRawJob → upsert → 요약 로그`)은 동일 적용. 인증키는 `WORKNET_API_KEY`(없으면 즉시 명확한 에러로 종료, 조용한 폴백 금지 — saramin 과 동일 규약).
+**(5) AlioAdapter (2026-07-14 확정 — 워크넷 폐기 후 교체, 계약 변경 없음)**
+- **워크넷 어댑터는 폐기.** 워크넷 채용정보목록 API 는 개인 발급 불가(7장·11장 정정). 어제 만든 WorknetAdapter/`worknet` 스위치 관련 코드는 제거 대상.
+- 소스: 잡알리오(재정경제부_공공기관 채용정보 조회서비스, 공공데이터포털 ID `15125273`). 개인 개발계정 **자동승인**(실 발급·호출 검증 완료), 일 1,000콜·24개월. `source = "alio"`.
+- 엔드포인트: `https://apis.data.go.kr/1051000/recruitment/list`, **JSON**(`resultType=json`). 인증키 `ALIO_API_KEY`(없으면 즉시 명확한 에러로 종료, 조용한 폴백 금지 — saramin 과 동일 규약). SaraminAdapter 와 동일하게 fetchFn 주입 구조(fixture 검증 가능).
+- 요청: `ncsCdLst=R600020`(정보통신) 로 **개발직군 한정**. 전 공공기관 111,801건 중 정보통신 8,565건 → **보조 소스(공공기관 IT직 롱테일)**, 사람인 커버리지를 대체하지 않고 보완.
+- RawJob 매핑(실 응답 필드 기준, 파싱은 어댑터 내부 — (1) 정규 필드 승격 적용): `recrutPblntSn→sourceJobId`, `instNm→companyName`, `recrutPbancTtl→title`, `ncsCdNmLst`(코드 `ncsCdLst`)→`jobRoleName`(직무 매핑), `workRgnNmLst→locationName`(지역), `recrutSeNm`(예 "신입+경력")→experienceRaw, `pbancEndYmd`(YYYYMMDD)→deadline, `srcUrl→url`(**전 건 존재**), `hireTypeNmLst→employmentType`, `acbgCondNmLst`(학력)·`ongoingYn`(진행중)은 raw 보존.
+- **description 을 채울 수 있음**: `aplyQlfcCn`+`scrnprcdrMthdExpln` 등 본문성 텍스트를 조합해 `description` 에 넣는다 → **사람인 API 의 본문 부재 약점을 보완**(사람인은 보통 null). 프론트 원문 URL 폴백 규약은 그대로 유효.
+- 파이프라인 고정 규약((4)의 `fetchRaw → normalizeRawJob → upsert → 요약 로그`)은 동일 적용.
 
 ### 12.9 M2a 계약 초안 — 회사 구독 (초안, 2026-07-14)
 

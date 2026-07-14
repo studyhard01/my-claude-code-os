@@ -4,7 +4,7 @@
 // - 라벨 매핑은 코드표가 아니라 "응답 name 필드 키워드 매핑"(12.8 결정).
 //   [2026-07-14 개정] name 은 raw 직접 참조가 아니라 RawJob 정규 필드
 //   jobRoleName/locationName 에서 읽는다 — 소스별 응답 구조 해석(사람인 JSON,
-//   워크넷 XML)은 각 어댑터가 담당하고, Normalizer 는 소스 비종속으로 유지(12.8(1)).
+//   잡알리오 JSON)은 각 어댑터가 담당하고, Normalizer 는 소스 비종속으로 유지(12.8(1)).
 //   code 원문은 RawJob.jobRoleCode/locationCode + raw 에 남는다(코드표 유지 부담 제거).
 // - dataQuality 판정(12.8): title/companyName 누락(placeholder 대체), jobRole null,
 //   location null, experience 해석 실패 → PARTIAL.
@@ -77,7 +77,9 @@ export function mapLocation(name: string | undefined): string | null {
 /**
  * experience 해석 (12.8): 사람인 experience-level code
  *   0(무관)→ANY, 1(신입)→NEW, 2(경력)→EXPERIENCED, 3(신입/경력)→ANY.
- * code 가 아닌 name 문자열("신입" 등)도 관대하게 수용(Mock 등 비-code 소스 대비).
+ * code 가 아닌 name 문자열도 관대하게 수용(Mock·잡알리오 등 비-code 소스):
+ *   신입·경력 둘 다 포함(잡알리오 "신입+경력", 사람인 "신입/경력")→ANY,
+ *   "무관"→ANY, "신입"→NEW, "경력"→EXPERIENCED.
  * 해석 실패 → ANY + resolved:false (→ PARTIAL 사유).
  */
 export function mapExperience(rawValue: string | undefined): {
@@ -95,10 +97,10 @@ export function mapExperience(rawValue: string | undefined): {
     case "2":
       return { level: "EXPERIENCED", resolved: true };
   }
-  // name 폴백 — "신입/경력" 을 "신입"/"경력"보다 먼저 검사
-  // "관계없음" 은 워크넷 career 표현(무관과 동일 의미)
-  if (v.includes("신입/경력") || v.includes("무관") || v.includes("관계없음"))
-    return { level: "ANY", resolved: true };
+  // name 폴백 — 신입·경력 둘 다 포함(잡알리오 "신입+경력", 사람인 "신입/경력")을
+  //   "신입"/"경력" 단독보다 먼저 판정한다. "무관"·"관계없음"도 ANY.
+  if (v.includes("신입") && v.includes("경력")) return { level: "ANY", resolved: true };
+  if (v.includes("무관") || v.includes("관계없음")) return { level: "ANY", resolved: true };
   if (v.includes("신입")) return { level: "NEW", resolved: true };
   if (v.includes("경력")) return { level: "EXPERIENCED", resolved: true };
   return { level: "ANY", resolved: false };
