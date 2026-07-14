@@ -39,9 +39,9 @@
 - **수집 다변화 계약 (2026-07-14, PR #2)** — 결정 3건: ① M1 제2 소스 추가 ② M2 축 = 회사 구독 라이트(12.9 계약 초안) ③ 채용 플랫폼 크롤링 금지 명문화(잡코리아 v 사람인 대법 판례). RawJob 정규 필드 승격(12.8 확정). **계약 승인 게이트(Draft PR) 첫 실전 — 기획→Draft PR→사용자 승인→구현 순서가 실제로 돌았다**
 - **제2 소스 = 잡알리오로 확정 + 어댑터 구현 (2026-07-14, PR #3)** — 처음엔 워크넷 채용정보목록을 골랐으나 **개인 발급 불가**(민간 직업정보제공기관 자격+사업자등록증 필요) 판명 → 폐기. 대체로 **잡알리오(재정경제부 공공기관 채용, data.go.kr 15125273)**: 개인 개발키 자동승인·실호출 성공(전 11.2만건/정보통신 8.5천건), `AlioAdapter`(`/recruitment/list` JSON, 실응답 필드 그대로 매핑, `ncsCdLst=R600020` 개발 필터, 본문 결합으로 **description 채움** — 사람인 약점 보완), fixture 6건, `COLLECT_SOURCE=alio[-fixture]`, 테스트 30개·평가 게이트 100/100. **정직한 제약**: 잡알리오 NCS직무는 "정보통신" 같은 대분류라 우리 세부 직군에 거의 안 붙음 → 대부분 `jobRole=null → PARTIAL`(피드 기본 숨김). 잡알리오 가치는 "역할 필터 공고"가 아니라 **본문·원문URL**. (계약 미변경·M2 세분화 과제로 이관.) srcUrl 정크(~26%) 폴백은 검증된 ALIO 목록 페이지로(깊은링크 404 실측 후 교정)
 
-## 🚧 진행 중 · 남은 것 (M1)
+- **ralph-test 루프 완주 (2026-07-14, `/loop /ralph-test` 7바퀴 연속 자동)** — 대상 9건 전부 소진, **테스트 91개**(normalizer·format·serialize·saramin/alio 어댑터·api·jobs/bookmarks 라우트·collect). 산출 인프라: 테스트 전용 `prisma/test.db` 격리(`tests/setup/`, 실 dev.db 무접촉), 스크립트는 tsx 자식 프로세스 검증. 헛바퀴 0, 게이트가 잡은 오류 1(4바퀴 typecheck). 종료 후 /retrospect 자동 수확
 
-- **테스트 채우기** — `/loop /ralph-test` 로 남은 대상 7건 소진 (`.claude/ralph-test-progress.md` 참조)
+## 🚧 진행 중 · 남은 것 (M1)
 
 - **Mock → 실 API 교체 통합** — 사람인 승인 후 `COLLECT_SOURCE=saramin` + `SARAMIN_ACCESS_KEY` 로 전환, 실응답 필드명·구조 최종 검증(12.8)
 
