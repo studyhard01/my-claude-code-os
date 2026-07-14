@@ -9,6 +9,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "eval": "tsx scripts/evaluate.ts",
     "lint": "next lint",
     "prisma:generate": "prisma generate",
     "db:push": "prisma db push",
