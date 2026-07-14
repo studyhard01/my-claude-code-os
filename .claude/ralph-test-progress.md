@@ -13,7 +13,7 @@
 - [x] `src/lib/collect/saramin-adapter.ts` — fetchFn 주입으로 네트워크 없이 테스트. 페이지 순회·5콜 상한·관대한 파싱·부분 실패 허용 → `tests/lib/collect/saramin-adapter.test.ts` 10개 (2026-07-14, 4바퀴)
 - [x] `src/lib/api.ts` — 쿼리 직렬화·역직렬화(왕복 보존)·에러 변환·204 처리. 전역 fetch 는 `vi.stubGlobal` 로 목킹 → `tests/lib/api.test.ts` 14개 (2026-07-14, 5바퀴)
 - [x] `src/app/api/jobs/route.ts` — 정렬·필터·PARTIAL 집계·커서 규약 (OS.md 12.6) → `tests/app/api/jobs/route.test.ts` 8개 (2026-07-14, 6바퀴. 테스트 전용 prisma/test.db 격리 구축)
-- [ ] `src/app/api/bookmarks/route.ts` + `[id]/route.ts` — DB 필요(후순위)
+- [x] `src/app/api/bookmarks/route.ts` + `[id]/route.ts` — POST idempotent·저장 목록(마감 포함)·status 검증·404·204 → `tests/app/api/bookmarks/routes.test.ts` 7개 (2026-07-14, 7바퀴. 6바퀴 격리 패턴 재사용)
 - [ ] `scripts/collect.ts` — DB 필요(후순위). idempotent upsert(재실행 시 신규 0)
 
 ## ⛔ 메모 (건너뜀·발견된 버그)
