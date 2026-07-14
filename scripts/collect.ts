@@ -6,14 +6,14 @@
 //     → 수집 요약 로그(총·FULL·PARTIAL·신규/갱신)
 //
 // 수집 소스 스위치:
-//   COLLECT_SOURCE = mock(기본) | saramin-fixture | saramin | worknet-fixture | worknet
+//   COLLECT_SOURCE = mock(기본) | saramin-fixture | saramin | alio-fixture | alio
 //   - mock            : MockAdapter (day-1, 승인 전 기본값)
 //   - saramin-fixture : SaraminAdapter + 로컬 fixture 를 반환하는 가짜 fetchFn
 //                       → 실 파싱·정규화·upsert 경로 전체를 승인 전에 검증
 //   - saramin         : 실 API 호출. SARAMIN_ACCESS_KEY 필수(없으면 즉시 에러,
 //                       조용한 폴백 금지 — 12.8)
-//   - worknet-fixture : WorknetAdapter + 로컬 XML fixture (키 발급 전 경로 검증)
-//   - worknet         : 워크넷(고용24) 실 API. WORKNET_API_KEY 필수(동일 규약 — 12.8(5))
+//   - alio-fixture    : AlioAdapter + 로컬 JSON fixture (실 파싱·정규화·upsert 경로 검증)
+//   - alio            : 잡알리오 실 API. ALIO_API_KEY 필수(동일 규약 — 12.8(5))
 //
 // upsert 는 (source, sourceJobId) UNIQUE 키 기준 → 재실행 시 중복 생성 없음(idempotent).
 // 날짜: Normalizer 는 ISO "문자열"을 반환하고, Date 변환은 여기(수집 진입점) 책임(12.8).
@@ -24,7 +24,7 @@ import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { MockAdapter, type SourceAdapter } from "../src/lib/collect/source-adapter";
 import { SaraminAdapter } from "../src/lib/collect/saramin-adapter";
-import { WorknetAdapter } from "../src/lib/collect/worknet-adapter";
+import { AlioAdapter } from "../src/lib/collect/alio-adapter";
 import { normalizeRawJob } from "../src/lib/collect/normalizer";
 
 const prisma = new PrismaClient();
@@ -33,9 +33,9 @@ const FIXTURE_PATH = path.resolve(
   process.cwd(),
   "src/lib/collect/fixtures/saramin-job-search.json",
 );
-const WORKNET_FIXTURE_PATH = path.resolve(
+const ALIO_FIXTURE_PATH = path.resolve(
   process.cwd(),
-  "src/lib/collect/fixtures/worknet-wanted-list.xml",
+  "src/lib/collect/fixtures/alio-recruitment-list.json",
 );
 
 /** COLLECT_SOURCE 값으로 어댑터 선택 (12.8 (4)) */
@@ -70,34 +70,34 @@ function buildAdapter(): SourceAdapter {
       return new SaraminAdapter({ accessKey });
     }
 
-    case "worknet-fixture": {
-      // 가짜 fetchFn 이 XML fixture 를 반환 → WorknetAdapter 의 실 파싱 코드를 그대로 태운다.
-      const fixture = readFileSync(WORKNET_FIXTURE_PATH, "utf-8");
+    case "alio-fixture": {
+      // 가짜 fetchFn 이 JSON fixture 를 반환 → AlioAdapter 의 실 파싱 코드를 그대로 태운다.
+      const fixture = readFileSync(ALIO_FIXTURE_PATH, "utf-8");
       const fetchFn: typeof globalThis.fetch = async () =>
         new Response(fixture, {
           status: 200,
-          headers: { "Content-Type": "application/xml" },
+          headers: { "Content-Type": "application/json" },
         });
-      return new WorknetAdapter({ apiKey: "fixture-key", fetchFn });
+      return new AlioAdapter({ apiKey: "fixture-key", fetchFn });
     }
 
-    case "worknet": {
-      const apiKey = process.env.WORKNET_API_KEY;
+    case "alio": {
+      const apiKey = process.env.ALIO_API_KEY;
       if (!apiKey) {
         // 조용한 폴백 금지(12.8(5)): saramin 과 동일 규약.
         throw new Error(
-          "[collect] COLLECT_SOURCE=worknet 인데 WORKNET_API_KEY 가 없습니다. " +
-            "공공데이터포털에서 워크넷 채용정보 API 활용신청(자동승인) 후 키를 설정하세요. " +
-            "(키 발급 전 검증은 COLLECT_SOURCE=worknet-fixture 사용)",
+          "[collect] COLLECT_SOURCE=alio 인데 ALIO_API_KEY 가 없습니다. " +
+            "공공데이터포털에서 잡알리오 채용정보 API 활용신청(자동승인) 후 키를 설정하세요. " +
+            "(키 발급 전 검증은 COLLECT_SOURCE=alio-fixture 사용)",
         );
       }
-      return new WorknetAdapter({ apiKey });
+      return new AlioAdapter({ apiKey });
     }
 
     default:
       throw new Error(
         `[collect] 알 수 없는 COLLECT_SOURCE: "${mode}" ` +
-          "(mock | saramin-fixture | saramin | worknet-fixture | worknet)",
+          "(mock | saramin-fixture | saramin | alio-fixture | alio)",
       );
   }
 }
