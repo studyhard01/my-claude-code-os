@@ -11,7 +11,7 @@
 - [x] `src/lib/collect/alio-adapter.ts` — (루프 밖에서 완료) 07-14 잡알리오 피벗 작업이 테스트 동반 구현 → `tests/lib/collect/alio-adapter.test.ts`
 - [x] `src/lib/serialize.ts` — 순수 로직. Prisma Job → JobDTO 직렬화 (OS.md 12.3/12.4) → `tests/lib/serialize.test.ts` 8개 (2026-07-14, 3바퀴. Prisma 행은 리터럴로 흉내 — DB 불필요)
 - [x] `src/lib/collect/saramin-adapter.ts` — fetchFn 주입으로 네트워크 없이 테스트. 페이지 순회·5콜 상한·관대한 파싱·부분 실패 허용 → `tests/lib/collect/saramin-adapter.test.ts` 10개 (2026-07-14, 4바퀴)
-- [ ] `src/lib/api.ts` — fetch 목킹 필요. 쿼리 직렬화·에러 처리
+- [x] `src/lib/api.ts` — 쿼리 직렬화·역직렬화(왕복 보존)·에러 변환·204 처리. 전역 fetch 는 `vi.stubGlobal` 로 목킹 → `tests/lib/api.test.ts` 14개 (2026-07-14, 5바퀴)
 - [ ] `src/app/api/jobs/route.ts` — DB 필요(후순위). 정렬·필터·totalCount 규약 (OS.md 12.6)
 - [ ] `src/app/api/bookmarks/route.ts` + `[id]/route.ts` — DB 필요(후순위)
 - [ ] `scripts/collect.ts` — DB 필요(후순위). idempotent upsert(재실행 시 신규 0)
