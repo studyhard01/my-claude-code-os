@@ -58,7 +58,7 @@ describe("mapExperience — code 우선, name 폴백 (12.8)", () => {
   it("name 폴백: '신입/경력'·'무관'을 '신입'/'경력'보다 먼저 판정한다", () => {
     expect(mapExperience("신입/경력")).toEqual({ level: "ANY", resolved: true });
     expect(mapExperience("경력무관")).toEqual({ level: "ANY", resolved: true });
-    expect(mapExperience("관계없음")).toEqual({ level: "ANY", resolved: true }); // 워크넷 표현
+    expect(mapExperience("관계없음")).toEqual({ level: "ANY", resolved: true }); // 방어적: 일부 소스의 '무관' 표현
     expect(mapExperience("신입")).toEqual({ level: "NEW", resolved: true });
     expect(mapExperience("경력 3년↑")).toEqual({ level: "EXPERIENCED", resolved: true });
   });

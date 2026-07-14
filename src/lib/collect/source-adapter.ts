@@ -28,13 +28,13 @@ export interface RawJob {
   companyName?: string;
   jobRoleCode?: string; // 소스별 직무 코드 원문(예: 사람인 job_cd) — 라벨 매핑에는 안 쓰고 보존용
   /**
-   * [12.8(1) 2026-07-14 승격] 직무명 원문(사람인 job-code.name, 워크넷 jobsNm 등).
+   * [12.8(1) 2026-07-14 승격] 직무명 원문(사람인 job-code.name, 잡알리오 ncsCdNmLst 등).
    * 소스별 응답 구조 해석은 각 어댑터 책임이며, Normalizer 는 이 정규 필드만 보고
    * 키워드 매핑한다(raw 직접 참조 금지).
    */
   jobRoleName?: string;
   locationCode?: string;
-  /** [12.8(1) 2026-07-14 승격] 지역명 원문(사람인 location.name, 워크넷 region 등) */
+  /** [12.8(1) 2026-07-14 승격] 지역명 원문(사람인 location.name, 잡알리오 workRgnNmLst 등) */
   locationName?: string;
   experienceRaw?: string;
   employmentType?: string;
