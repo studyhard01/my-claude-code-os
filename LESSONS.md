@@ -10,6 +10,8 @@
 - 원격이 강제 덮어쓰기로 갈라졌을 때 처방은 상황마다 다르다: **"서로 뭘 갖고 있나"부터 확인**(`git cherry origin/브랜치 HEAD` 로 patch 단위 대조). 내용이 같으면 rebase --onto(07-13 케이스), 원격이 내 커밋을 다 품고 앞서 있으면 `reset --hard origin/브랜치`(07-14 케이스).
 - 강제 덮어쓰기가 이틀 연속 사고를 냈다 → **force push 금지, 브랜치 재구성은 PR 병합으로만** 규칙을 CLAUDE.md 로 승격(2026-07-14 합의).
 - `reset`/`pull` 로 프로젝트 스킬이 갱신되면 **홈(`~/.claude`) 그림자 사본도 낡는다** — git 동기화 직후 홈 사본 diff 확인을 습관으로.
+- **테스트 인프라가 구축돼 있다** (ralph-test 루프 산출): DB 필요하면 `tests/setup/` 의 test.db 격리(실 dev.db 무접촉), import 즉시 실행되는 스크립트는 리팩터링 말고 tsx 자식 프로세스로 실행해 검증 — 상세 패턴은 `.claude/ralph-test-progress.md` 📚.
+- zsh 에서 `status` 는 **읽기 전용 예약 변수** — 셸 스크립트(훅·Monitor)에서 변수명으로 쓰면 즉사한다(실측). `run_state` 처럼 우회할 것.
 
 ## 2026-07-13 (루프 엔지니어링 시작 — CI·게이트·지도 자동화)
 
