@@ -4,8 +4,9 @@
 // 데이터는 seed 된 dev.db 의 Job. 응답 계약(JobDTO[], nextCursor, totalCount,
 // partialHiddenCount)은 이전 mock 과 동일 → 프론트 무수정.
 //
-// 쿼리(12.5): role(콤마 다중), location(콤마 다중), experience(콤마 다중),
-//   keyword, sort(deadline|recent), deadlineWithin(days), includeExpired(기본 false), cursor
+// 쿼리(12.5): role(콤마 다중 + 예약 토큰 "unassigned"=jobRole null 버킷, 12.6),
+//   location(콤마 다중), experience(콤마 다중), keyword, sort(deadline|recent),
+//   deadlineWithin(days), includeExpired(기본 false), cursor
 //
 // [설계 결정]
 //  - 하드 필터(expired/experience/keyword/deadlineWithin)는 Prisma WHERE 로 DB 에서 처리.
@@ -49,7 +50,12 @@ function startOfToday(): Date {
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
 
-  const roles = splitMulti(sp.get("role")); // 콤마 다중값 (location/experience 와 동일 규약)
+  const roleTokens = splitMulti(sp.get("role")); // 콤마 다중값 (location/experience 와 동일 규약)
+  // 12.6 예약 토큰 "unassigned" = jobRole IS NULL 버킷(직무 미분류 — 공공 통합공채 등).
+  // 대상은 오직 jobRole=null. location null 등 다른 사유 PARTIAL 은 여기 안 걸린다.
+  const includeUnassigned = roleTokens.includes("unassigned");
+  const roles = roleTokens.filter((r) => r !== "unassigned"); // 실제 role 값들
+  const roleFilterOn = roleTokens.length > 0;
   const locations = splitMulti(sp.get("location"));
   const experiences = splitMulti(sp.get("experience"));
   const keyword = sp.get("keyword")?.trim() ?? "";
@@ -97,14 +103,21 @@ export async function GET(req: NextRequest) {
   let partialHiddenCount = 0;
   const kept: JobWithBookmarks[] = [];
   for (const job of rows) {
-    const hideByRole = roles.length > 0 && job.jobRole == null;
+    // unassigned 포함 시 jobRole=null 은 "가려진" 게 아니라 명시 요청된 매칭 대상(12.6)
+    const hideByRole =
+      roleFilterOn && job.jobRole == null && !includeUnassigned;
     const hideByLoc = locations.length > 0 && job.location == null;
     if (job.dataQuality === "PARTIAL" && (hideByRole || hideByLoc)) {
       partialHiddenCount += 1; // 조건 확인 어려운 공고로 별도 노출 → 모아보기 가치 보호
       continue;
     }
-    if (roles.length > 0 && (!job.jobRole || !roles.includes(job.jobRole)))
-      continue;
+    if (roleFilterOn) {
+      // jobRole IN (roles) OR (unassigned 포함 시 jobRole IS NULL) — 12.6.
+      // 미지의 role 값은 어느 쪽에도 안 걸려 조용히 무시(기존 규약 유지).
+      const roleMatch =
+        job.jobRole != null ? roles.includes(job.jobRole) : includeUnassigned;
+      if (!roleMatch) continue;
+    }
     if (
       locations.length > 0 &&
       (!job.location || !locations.includes(job.location))
