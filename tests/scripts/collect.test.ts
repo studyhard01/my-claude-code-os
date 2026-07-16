@@ -55,6 +55,30 @@ describe("collect — fixture 경로 end-to-end + idempotent (12.8)", () => {
     // 잡알리오의 가치 = 본문 결합(사람인 약점 보완, STATUS/12.8(5))
     expect(rows.some((r) => r.description && r.description.length > 0)).toBe(true);
   });
+
+  it("kakao-fixture: 1회차 적재 후 재실행하면 신규 0 (idempotent, 12.8(4))", { timeout: 90_000 }, async () => {
+    const first = runCollect({ COLLECT_SOURCE: "kakao-fixture" });
+    const afterFirst = await prisma.job.count({ where: { source: "kakao" } });
+    expect(afterFirst).toBe(8); // fixture 9건 - realId 없는 1건
+    expect(first).toMatch(new RegExp(`신규 ${afterFirst} / 갱신 0`));
+
+    const second = runCollect({ COLLECT_SOURCE: "kakao-fixture" });
+    expect(second).toMatch(new RegExp(`신규 0 / 갱신 ${afterFirst}`));
+    expect(await prisma.job.count({ where: { source: "kakao" } })).toBe(afterFirst);
+  });
+
+  it("kakao-fixture: 카카오의 가치 = 직무가 붙은 공고 + 본문 (잡알리오 공백 보완)", { timeout: 60_000 }, async () => {
+    runCollect({ COLLECT_SOURCE: "kakao-fixture" });
+    const rows = await prisma.job.findMany({ where: { source: "kakao" } });
+
+    // 이 어댑터를 넣은 이유(STATUS): 조건 필터가 걸 대상 = jobRole 이 붙은 공고
+    expect(rows.filter((r) => r.jobRole !== null).length).toBeGreaterThanOrEqual(5);
+    expect(rows.some((r) => r.description && r.description.length > 0)).toBe(true);
+    // url 은 전 건 공고 상세로 조립된다(12.8(6)) — PARTIAL 이어도 원문 확인 경로가 있다
+    expect(rows.every((r) => r.url.startsWith("https://careers.kakao.com/jobs/"))).toBe(true);
+    // [실측] 카카오 테크 공고는 상시채용 → deadline 전건 null
+    expect(rows.every((r) => r.deadline === null)).toBe(true);
+  });
 });
 
 describe("collect — 조용한 폴백 금지 (12.8)", () => {
@@ -68,9 +92,12 @@ describe("collect — 조용한 폴백 금지 (12.8)", () => {
     expect(await prisma.job.count()).toBe(0); // 아무것도 적재되지 않음
   });
 
-  it("알 수 없는 COLLECT_SOURCE 는 즉시 실패한다", { timeout: 60_000 }, () => {
+  it("알 수 없는 COLLECT_SOURCE 는 즉시 실패하고, 쓸 수 있는 소스를 알려준다", { timeout: 60_000 }, () => {
     const { status, stderr } = runCollectExpectFail({ COLLECT_SOURCE: "wanted" });
     expect(status).not.toBe(0);
     expect(stderr).toContain("알 수 없는 COLLECT_SOURCE");
+    // 소스를 추가하면 안내 문구도 함께 갱신되어야 한다(스위치와 문구의 드리프트 방지)
+    expect(stderr).toContain("kakao-fixture");
+    expect(stderr).toContain("kakao");
   });
 });
