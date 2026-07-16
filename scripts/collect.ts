@@ -7,6 +7,7 @@
 //
 // 수집 소스 스위치:
 //   COLLECT_SOURCE = mock(기본) | saramin-fixture | saramin | alio-fixture | alio
+//                    | kakao-fixture | kakao
 //   - mock            : MockAdapter (day-1, 승인 전 기본값)
 //   - saramin-fixture : SaraminAdapter + 로컬 fixture 를 반환하는 가짜 fetchFn
 //                       → 실 파싱·정규화·upsert 경로 전체를 승인 전에 검증
@@ -14,6 +15,10 @@
 //                       조용한 폴백 금지 — 12.8)
 //   - alio-fixture    : AlioAdapter + 로컬 JSON fixture (실 파싱·정규화·upsert 경로 검증)
 //   - alio            : 잡알리오 실 API. ALIO_API_KEY 필수(동일 규약 — 12.8(5))
+//   - kakao-fixture   : KakaoCareersAdapter + 로컬 JSON fixture (동일 규약)
+//   - kakao           : 카카오 자체 채용 공개 JSON. 인증키 불필요(공개 엔드포인트)라
+//                       키 검사가 없다 — 대신 비공식 내부 API 라 응답 구조가 바뀌면
+//                       어댑터가 명확한 에러로 죽는다(12.8(6))
 //
 // upsert 는 (source, sourceJobId) UNIQUE 키 기준 → 재실행 시 중복 생성 없음(idempotent).
 // 날짜: Normalizer 는 ISO "문자열"을 반환하고, Date 변환은 여기(수집 진입점) 책임(12.8).
@@ -25,6 +30,7 @@ import { PrismaClient } from "@prisma/client";
 import { MockAdapter, type SourceAdapter } from "../src/lib/collect/source-adapter";
 import { SaraminAdapter } from "../src/lib/collect/saramin-adapter";
 import { AlioAdapter } from "../src/lib/collect/alio-adapter";
+import { KakaoCareersAdapter } from "../src/lib/collect/kakao-adapter";
 import { normalizeRawJob } from "../src/lib/collect/normalizer";
 
 const prisma = new PrismaClient();
@@ -37,6 +43,17 @@ const ALIO_FIXTURE_PATH = path.resolve(
   process.cwd(),
   "src/lib/collect/fixtures/alio-recruitment-list.json",
 );
+const KAKAO_FIXTURE_PATH = path.resolve(
+  process.cwd(),
+  "src/lib/collect/fixtures/kakao-job-list.json",
+);
+
+/** fixture JSON 을 그대로 반환하는 가짜 fetchFn — 어댑터의 실 파싱 코드를 그대로 태운다 */
+function fixtureFetch(fixturePath: string): typeof globalThis.fetch {
+  const body = readFileSync(fixturePath, "utf-8");
+  return async () =>
+    new Response(body, { status: 200, headers: { "Content-Type": "application/json" } });
+}
 
 /** COLLECT_SOURCE 값으로 어댑터 선택 (12.8 (4)) */
 function buildAdapter(): SourceAdapter {
@@ -46,16 +63,9 @@ function buildAdapter(): SourceAdapter {
     case "mock":
       return new MockAdapter();
 
-    case "saramin-fixture": {
+    case "saramin-fixture":
       // 가짜 fetchFn 이 fixture JSON 을 반환 → SaraminAdapter 의 실 파싱 코드를 그대로 태운다.
-      const fixture = readFileSync(FIXTURE_PATH, "utf-8");
-      const fetchFn: typeof globalThis.fetch = async () =>
-        new Response(fixture, {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
-      return new SaraminAdapter({ accessKey: "fixture-key", fetchFn });
-    }
+      return new SaraminAdapter({ accessKey: "fixture-key", fetchFn: fixtureFetch(FIXTURE_PATH) });
 
     case "saramin": {
       const accessKey = process.env.SARAMIN_ACCESS_KEY;
@@ -70,16 +80,9 @@ function buildAdapter(): SourceAdapter {
       return new SaraminAdapter({ accessKey });
     }
 
-    case "alio-fixture": {
+    case "alio-fixture":
       // 가짜 fetchFn 이 JSON fixture 를 반환 → AlioAdapter 의 실 파싱 코드를 그대로 태운다.
-      const fixture = readFileSync(ALIO_FIXTURE_PATH, "utf-8");
-      const fetchFn: typeof globalThis.fetch = async () =>
-        new Response(fixture, {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
-      return new AlioAdapter({ apiKey: "fixture-key", fetchFn });
-    }
+      return new AlioAdapter({ apiKey: "fixture-key", fetchFn: fixtureFetch(ALIO_FIXTURE_PATH) });
 
     case "alio": {
       const apiKey = process.env.ALIO_API_KEY;
@@ -94,10 +97,18 @@ function buildAdapter(): SourceAdapter {
       return new AlioAdapter({ apiKey });
     }
 
+    case "kakao-fixture":
+      return new KakaoCareersAdapter({ fetchFn: fixtureFetch(KAKAO_FIXTURE_PATH) });
+
+    case "kakao":
+      // 인증키가 없는 공개 엔드포인트 → saramin/alio 같은 키 검사가 없다(12.8(6)).
+      // "조용한 폴백 금지"는 키가 아니라 응답 구조 검증으로 지켜진다(어댑터 assertKakaoBody).
+      return new KakaoCareersAdapter();
+
     default:
       throw new Error(
         `[collect] 알 수 없는 COLLECT_SOURCE: "${mode}" ` +
-          "(mock | saramin-fixture | saramin | alio-fixture | alio)",
+          "(mock | saramin-fixture | saramin | alio-fixture | alio | kakao-fixture | kakao)",
       );
   }
 }

@@ -32,20 +32,73 @@ export const COMPANY_PLACEHOLDER = "(회사 미확인)";
 // ---- 직무 라벨 키워드 매핑 (name → DEV_ROLE_OPTIONS.value 7종) ----
 // 순서 = 우선순위. name 에 여러 키워드가 섞이면 먼저 매칭되는 값 채택.
 // (fullstack 을 frontend/backend 보다 앞에 둔다: "풀스택, 웹개발" 같은 복합 name 대비)
+//
+// [내부 테이블 — 계약 아님] 소스가 늘 때마다 여기를 보강한다. contract.ts 무관.
+// [2026-07-16 보강 — 카카오 어댑터] 카카오 채용 공고 제목은 직무를 영문으로 쓴다
+//   ("Data Scientist", "Machine Learning Engineer", "LLM Research Engineer").
+//   기존 테이블은 한글 키워드뿐이라 실측 28건 중 6건만 매핑됐다 → 영문 표현을 추가.
+//   [주의] matchKeyword 는 단순 부분문자열(includes) 매칭이라 짧은 토큰은 오탐한다.
+//     예) "ai" 는 email/detail/training/maintenance 안에 들어 있어 추가하면 안 된다.
+//     그래서 "data"/"ml" 단독이 아니라 "data engineer" 처럼 구(phrase)로만 넣는다.
 const ROLE_KEYWORDS: Array<{ value: string; keywords: string[] }> = [
-  { value: "fullstack", keywords: ["풀스택", "fullstack", "full-stack", "full stack"] },
-  { value: "frontend", keywords: ["프론트엔드", "프론트", "frontend", "front-end"] },
-  { value: "backend", keywords: ["백엔드", "backend", "back-end", "서버개발", "서버 개발"] },
+  {
+    value: "fullstack",
+    keywords: ["풀스택", "fullstack", "full-stack", "full stack"],
+  },
+  {
+    value: "frontend",
+    keywords: ["프론트엔드", "프론트", "frontend", "front-end", "front end"],
+  },
+  {
+    value: "backend",
+    keywords: [
+      "백엔드",
+      "backend",
+      "back-end",
+      "back end",
+      "서버개발",
+      "서버 개발",
+      "서버 엔지니어",
+      "server engineer",
+      "server developer",
+    ],
+  },
   { value: "android", keywords: ["안드로이드", "android"] },
   { value: "ios", keywords: ["ios", "아이폰"] },
-  { value: "data", keywords: ["데이터", "머신러닝", "딥러닝", "빅데이터", "인공지능"] },
-  { value: "devops", keywords: ["데브옵스", "devops", "인프라", "클라우드", "sre"] },
+  {
+    value: "data",
+    keywords: [
+      "데이터",
+      "머신러닝",
+      "딥러닝",
+      "빅데이터",
+      "인공지능",
+      // 영문 표현(카카오 등 자체 채용 페이지 계열) — 전부 구 단위로 오탐 방지
+      "data engineer",
+      "data scientist",
+      "data analytics",
+      "data analyst",
+      "data platform",
+      "machine learning",
+      "deep learning",
+      "ml engineer",
+      "mlops",
+      "llm",
+    ],
+  },
+  {
+    value: "devops",
+    keywords: ["데브옵스", "devops", "인프라", "클라우드", "sre", "site reliability"],
+  },
 ];
 
 // ---- 지역 라벨 키워드 매핑 (name → LOCATION_OPTIONS.value) ----
+// [2026-07-16 보강] 카카오는 근무지를 광역시도가 아니라 지명("판교")으로 준다(실측).
+//   판교·분당·성남은 경기(성남시) → 경기로 매핑. 사용자 필터 선택지(LOCATION_OPTIONS)는
+//   광역 단위 그대로 유지되므로 계약 변경 없음.
 const LOCATION_KEYWORDS: Array<{ value: string; keywords: string[] }> = [
   { value: "서울", keywords: ["서울"] },
-  { value: "경기", keywords: ["경기"] },
+  { value: "경기", keywords: ["경기", "판교", "분당", "성남"] },
   { value: "인천", keywords: ["인천"] },
   { value: "부산", keywords: ["부산"] },
   { value: "대전", keywords: ["대전"] },
