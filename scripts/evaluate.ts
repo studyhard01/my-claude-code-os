@@ -8,6 +8,7 @@
  * 평가 서버는 3100 포트에 따로 띄운다(사용자의 3000 dev 서버와 충돌 방지).
  */
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { DEV_ROLE_OPTIONS } from "../src/types/contract";
 
 const PORT = 3100;
 let base = `http://localhost:${PORT}`;
@@ -141,18 +142,28 @@ async function main() {
     }
     set("C2", sorted);
 
-    // ---- C3. role 필터 — 목록에 실존하는 role 로 검사 (0건 통과 = 빈 배열의 함정 방지) ----
-    const knownRole = jobs.map((j) => j.jobRole).find((r) => r !== null);
-    if (!knownRole) {
-      set("C3", false, "role 있는 공고가 없어 검증 불가");
-    } else {
-      const filtered = await http(`/api/jobs?role=${encodeURIComponent(knownRole)}`);
-      const c3 =
-        filtered.status === 200 &&
-        Array.isArray(filtered.body?.items) &&
-        filtered.body.items.length >= 1 &&
-        filtered.body.items.every((j: any) => j.jobRole === knownRole);
-      set("C3", c3, `${knownRole} ${filtered.body?.items?.length ?? "?"}건`);
+    // ---- C3. role 필터 — 계약의 직무를 하나씩 실제로 걸어 검사 ----
+    // 1페이지 표본(jobs)에서 role 을 골라 쓰면 안 된다: 피드 기본 정렬이 마감임박순이라
+    // 1페이지가 role 없는 공고로 채워지면 필터가 멀쩡해도 FAIL 한다. 2026-07-16 실측 —
+    // role 있던 공고가 만료돼 밀려나자 잡알리오 PARTIAL 20건이 1페이지를 채웠고,
+    // 필터는 정상인데 게이트가 깨졌다. 즉 시간이 흐르면 저절로 깨지는 검사였다.
+    // 0건 통과(빈 배열의 함정)는 여전히 막는다 — 1건 이상 나온 직무로만 판정한다.
+    let c3Judged = false;
+    for (const role of DEV_ROLE_OPTIONS) {
+      const filtered = await http(`/api/jobs?role=${encodeURIComponent(role.value)}`);
+      if (filtered.status !== 200 || !Array.isArray(filtered.body?.items)) {
+        set("C3", false, `${role.value} 응답 이상 (status ${filtered.status})`);
+        c3Judged = true;
+        break;
+      }
+      if (filtered.body.items.length === 0) continue; // 이 직무에 공고가 없을 뿐 — 다음 직무로
+      const ok = filtered.body.items.every((j: any) => j.jobRole === role.value);
+      set("C3", ok, `${role.value} ${filtered.body.items.length}건`);
+      c3Judged = true;
+      break;
+    }
+    if (!c3Judged) {
+      set("C3", false, `직무 ${DEV_ROLE_OPTIONS.length}종 전부 0건 — 데이터 부재 또는 필터 고장`);
     }
 
     // ---- C4. 상세 + 404 에러 계약 ----
