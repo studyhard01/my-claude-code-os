@@ -83,26 +83,40 @@ fi
 # ── 바뀐 줄 번호 뽑기 ────────────────────────────────────────
 # [주의] 이 저장소의 .md 는 CRLF 다. 어떤 도구가 LF 로 저장하면 --strip-trailing-cr 없이는
 #        "전 줄이 바뀌었다"고 오탐한다(실측: +315/-315). 그래서 항상 붙인다.
-DIFF_OPTS="--strip-trailing-cr"
+#
+# [2026-07-16 정정] 이전 버전은 --unchanged-line-format/--old-line-format/--new-line-format
+#   으로 줄 번호를 뽑았다. 이건 **GNU diff 전용 옵션**이라 macOS(BSD diff)에선 통째로 실패한다.
+#   `|| true` 가 에러를 삼켜 added=removed=0 → 아래 "변화 없음" 분기로 조용히 exit 0.
+#   즉 이 훅은 macOS 에서 **또다시 조용히 죽어 있었다**(헤더의 "조용히 실패하지 않는다"가
+#   무색하게). → BSD/GNU 양쪽에 있는 `-U0` 유니파이드 출력 + awk 파싱으로 교체한다.
+DIFF_OPTS="--strip-trailing-cr -U0"
 
-# 새 파일 기준으로 추가·수정된 줄 번호. (순수 삭제만 있으면 비어 있다)
-new_lines="$(diff $DIFF_OPTS --unchanged-line-format='' --old-line-format='' \
-  --new-line-format='%dn ' "$snap" "$fpath" 2>/dev/null)" || true
+# 유니파이드 diff 를 1회만 만들어 재사용(파싱 대상 고정 → 양쪽 집계가 어긋나지 않는다)
+udiff="$(diff $DIFF_OPTS "$snap" "$fpath" 2>/dev/null)" || true
+
+# 새 파일 기준 추가·수정된 줄 번호. 훅 헤더의 `@@ -a,b +c,d @@` 에서 c 를 읽어 증가시킨다.
+new_lines="$(printf '%s\n' "$udiff" | awk '
+  /^@@/ { if (match($0, /\+[0-9]+/)) ln = substr($0, RSTART+1, RLENGTH-1) + 0; next }
+  /^\+\+\+/ { next }
+  /^\+/    { printf "%d ", ln; ln++ }
+')"
 
 added="$(printf '%s' "$new_lines" | wc -w | tr -d ' ')"
-removed="$(diff $DIFF_OPTS --unchanged-line-format='' --old-line-format='x' \
-  --new-line-format='' "$snap" "$fpath" 2>/dev/null | wc -c | tr -d ' ')" || true
+removed="$(printf '%s\n' "$udiff" | awk '/^---/ { next } /^-/ { c++ } END { print c+0 }')"
 
 # 내용이 실제로 안 바뀌었으면 기록하지 않는다 (같은 내용 재저장 등)
 if [ "$added" -eq 0 ] && [ "${removed:-0}" -eq 0 ]; then
   exit 0
 fi
 
-# 순수 삭제뿐이면 옛 파일(스냅샷) 기준 줄 번호로 절을 찾는다.
+# 순수 삭제뿐이면 옛 파일(스냅샷) 기준 줄 번호로 절을 찾는다(`@@ -a,b` 의 a).
 target="$fpath"
 if [ "$added" -eq 0 ]; then
-  new_lines="$(diff $DIFF_OPTS --unchanged-line-format='' --new-line-format='' \
-    --old-line-format='%dn ' "$snap" "$fpath" 2>/dev/null)" || true
+  new_lines="$(printf '%s\n' "$udiff" | awk '
+    /^@@/ { if (match($0, /-[0-9]+/)) ln = substr($0, RSTART+1, RLENGTH-1) + 0; next }
+    /^---/ { next }
+    /^-/   { printf "%d ", ln; ln++ }
+  ')"
   target="$snap"
 fi
 
