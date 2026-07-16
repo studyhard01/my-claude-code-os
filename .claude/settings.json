@@ -23,6 +23,15 @@
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/skill-usage-log.sh\""
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/push-gate.sh\""
+          }
+        ]
       }
     ],
     "SubagentStart": [
