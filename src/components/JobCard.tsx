@@ -16,6 +16,19 @@ import {
 import { useBookmarks } from "@/lib/bookmarks";
 import BookmarkButton from "./BookmarkButton";
 
+// source 식별자 → 사용자용 라벨. PARTIAL 카드의 원문 CTA·출처 표기에 사용.
+// (기존에 "사람인"이 하드코딩돼 있어 alio/kakao 공고에서 거짓 라벨이 됐다 —
+//  통합공채 펼침 구획이 이 카드를 재사용하므로 함께 수정. 미지 소스는 "원문".)
+const SOURCE_LABELS: Record<string, string> = {
+  saramin: "사람인",
+  alio: "잡알리오",
+  kakao: "카카오 채용",
+};
+
+function sourceLabel(source: string): string {
+  return SOURCE_LABELS[source] ?? source;
+}
+
 export default function JobCard({ job }: { job: JobDTO }) {
   const { entry } = useBookmarks();
   const bookmark = entry(job.id);
@@ -59,7 +72,9 @@ export default function JobCard({ job }: { job: JobDTO }) {
             <span className={`badge badge--deadline badge--${dl.tone}`}>
               {dl.label}
             </span>
-            <span className="card__source">출처 {job.sources[0] ?? job.source}</span>
+            <span className="card__source">
+              출처 {sourceLabel(job.sources[0] ?? job.source)}
+            </span>
           </div>
           <div className="card__ctaRow">
             <a
@@ -68,7 +83,9 @@ export default function JobCard({ job }: { job: JobDTO }) {
               rel="noopener noreferrer"
               className="btn btn--outline btn--sm card__extLink"
             >
-              사람인에서 직접 확인 ↗
+              {SOURCE_LABELS[job.source]
+                ? `${SOURCE_LABELS[job.source]}에서 직접 확인 ↗`
+                : "원문에서 직접 확인 ↗"}
             </a>
           </div>
         </>
