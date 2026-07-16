@@ -31,5 +31,9 @@ next-env.d.ts
 /.claude/skill-usage.log
 /.claude/skill-usage.err
 
+# push-gate hook 부산물 (평가 통과 표식 · 실패 흔적)
+/.claude/.eval-pass
+/.claude/push-gate.err
+
 # misc
 *.tsbuildinfo

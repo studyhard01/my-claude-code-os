@@ -67,6 +67,7 @@ npm run eval       # push 게이트 평가 — rubric 은 docs/eval-rubric.md, 1
   - `loop-map-context`(PostToolUse `Edit|Write`) — 루프 구성 파일(훅 `.sh`·스킬 SKILL.md·settings.json·CI 워크플로) 수정 감지 → "루프 지도(`docs/dev-loop-map.html`) 갱신 + 같은 주소로 재발행" 컨텍스트 주입. 지도 파일 자신은 무시(무한 메아리 방지).
   - `skill-usage-log`(PreToolUse `Skill`) — 스킬 호출을 `.claude/skill-usage.log` 에 한 줄씩 append. `skill-stat` 이 이걸 awk 로 집계한다.
 - 이 환경엔 **`jq` 가 없다.** 훅은 `sed` 만으로 작성할 것(`skill-context.sh`·`status-context.sh` 참고).
+- **macOS 는 BSD 계열이다 — GNU 전용 옵션 금지.** 같은 훅(`decision-log`)이 같은 이유로 두 번 죽었다: 07-09 `jq` 의존, 07-16 GNU 전용 `diff --unchanged-line-format`(BSD diff 가 통째로 거부, `|| true` 가 에러를 삼켜 조용히 사망). 훅·스크립트는 BSD/GNU 양쪽에 있는 옵션만 쓰고(`diff -U0` 등), **실패를 `|| true` 로 삼키지 말 것**. zsh 의 `status` 읽기 전용 예약변수도 같은 계열 함정.
 
 ## 어디를 읽을지 (컨텍스트 이정표)
 

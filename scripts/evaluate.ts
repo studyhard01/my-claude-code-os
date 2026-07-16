@@ -8,6 +8,7 @@
  * 평가 서버는 3100 포트에 따로 띄운다(사용자의 3000 dev 서버와 충돌 방지).
  */
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { writeFileSync } from "node:fs";
 import { DEV_ROLE_OPTIONS } from "../src/types/contract";
 
 const PORT = 3100;
@@ -260,5 +261,14 @@ main()
     const pass = score === 100;
     console.log(`총점 ${score}/100 → PUSH GATE: ${pass ? "PASS (push 허용)" : "FAIL (push 금지)"}`);
     console.log("=======================================================");
+    // push-gate 훅(.claude/hooks/push-gate.sh)이 읽는 통과 표식.
+    // PASS 때만 갱신 — 훅은 이 파일의 mtime 이 신선할 때만 git push 를 통과시킨다.
+    if (pass) {
+      try {
+        writeFileSync(".claude/.eval-pass", new Date().toISOString() + "\n");
+      } catch {
+        // 표식 실패가 평가 결과를 바꾸면 안 된다 — 훅 쪽에서 "표식 없음 = ask" 로 처리된다.
+      }
+    }
     process.exit(pass ? 0 : 1);
   });
