@@ -276,8 +276,8 @@
         </div>
         <div class="card lane-ai" style="grid-column:10">
           <h3>ship — 평가 후 push (자동)</h3>
-          <p><code>/ship</code> → <code>npm run eval</code> rubric 11항목 <strong>100/100 일 때만</strong> <code>git push</code></p>
-          <span class="tag tag-o">해결됨 — push 가 사람 손을 떠남</span>
+          <p><code>/ship</code> → <code>npm run eval</code> rubric 11항목 <strong>100/100 일 때만</strong> <code>git push</code>. <code>push-gate</code> 훅이 기계로 강제: force push 무조건 차단, 평가 표식(15분) 없는 push 는 사람 확인으로.</p>
+          <span class="tag tag-o">해결됨 — 문서 규칙에서 기계 게이트로</span>
         </div>
 
         <!-- CI lane -->
@@ -349,6 +349,8 @@
     <h2>변경 이력</h2>
     <p class="sub">루프 구성이 바뀔 때마다 여기에 한 줄씩 쌓인다 — 지도가 언제 왜 다시 그려졌는지의 기록. (루프 파일이 수정되면 <code>loop-map-context</code> 훅이 이 갱신을 자동 촉구한다)</p>
     <ul class="changelog">
+      <li><time>2026-07-17</time><span class="what">push 규칙이 문서에서 기계로 — <code>push-gate</code> 훅(PreToolUse Bash) 신설·등록: force push 무조건 차단, 평가 통과 표식(<code>.claude/.eval-pass</code>, evaluate.ts 가 PASS 때 기록) 15분 내면 통과, 없으면 사람 확인(ask). <small>(CLAUDE.md 의 "force push 금지"·"push 는 /ship 으로만" 부탁 2건이 보장으로 승격. 새 PreToolUse 훅이라 다음 세션부터 발화 — 확인 필요)</small></span></li>
+      <li><time>2026-07-16</time><span class="what">decision-log 훅 2차 복구 — GNU 전용 diff 옵션이 macOS(BSD diff)에서 통째로 거부돼 조용히 죽어 있던 것을 <code>-U0</code>+awk 로 교체. <small>("macOS = BSD, GNU 전용 옵션 금지" 교훈을 CLAUDE.md 로 승격)</small></span></li>
       <li><time>2026-07-14</time><span class="what">계약 승인 게이트 신설 — /orchestrate 2단계: 계약(OS.md 12장) 변경 시 <strong>Draft PR</strong> 로 사람이 계약 diff 를 구현 전에 승인(조건부 — 계약 안 바뀌면 건너뜀). 루프가 8→9단계로 재편</span></li>
       <li><time>2026-07-14</time><span class="what">병목 ① push 부분 해소 — <code>/ship</code> 스킬 + <code>npm run eval</code> push 게이트 신설(rubric 11항목, 100점일 때만 push). 첫 실측 100/100(목록 평균 25ms) <small>(첫 실행에서 "필터 0건도 통과" 함정을 발견해 실존 role + 1건 이상으로 강화)</small></span></li>
       <li><time>2026-07-13</time><span class="what">반복 ① 해소 — <code>/retrospect</code> 스킬 + <code>LESSONS.md</code> 신설(세션 교훈 누적, ralph-test 종료 시 자동 실행) <small>(loop-map-context 훅이 등록 당일 같은 세션에서 첫 발화 — 이 갱신도 그 촉구로 이뤄짐)</small></span></li>
