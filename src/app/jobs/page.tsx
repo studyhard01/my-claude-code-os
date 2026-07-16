@@ -27,6 +27,9 @@ import {
 import Filters from "@/components/Filters";
 import AppliedFilters from "@/components/AppliedFilters";
 import JobCard from "@/components/JobCard";
+import UnassignedSection, {
+  UNASSIGNED_SECTION_ID,
+} from "@/components/UnassignedSection";
 import { CardSkeletonList, EmptyState, ErrorState } from "@/components/states";
 
 /** 온보딩 조건 → 피드 초기 필터 프리셋 */
@@ -114,6 +117,12 @@ function FeedInner() {
 
   // 목록 새로 로드(필터 변경 시). cursor=null 로 첫 페이지.
   const listKey = buildJobsQuery({ ...filters, cursor: null });
+
+  // 필터가 바뀌면 넛지/펼침 구획을 접는다 — "접힌 상태가 기본"(12.8(5)).
+  useEffect(() => {
+    setShowPartial(false);
+  }, [listKey]);
+
   useEffect(() => {
     if (!filtersReady) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -163,7 +172,12 @@ function FeedInner() {
 
   const resetFilters = () => applyFilters(DEFAULT_FILTERS);
 
-  // partialHiddenCount 펼침 → 이 공고들을 실제로 보이게: 직무/지역 필터 해제
+  // role 필터 활성 여부 — 활성이면 넛지 펼침이 "직무 미분류 별도 구획"을 연다
+  // (12.8(5) 펼침 구획 · 12.6 예약 토큰 unassigned). 비활성이면 미분류 공고는
+  // 이미 필터에 걸리지 않으므로, 기존 "필터 풀기" 안내를 유지한다.
+  const roleActive = filters.roles.length > 0;
+
+  // (role 필터 비활성 시) partialHiddenCount 펼침 → 직무/지역 필터 해제
   const revealPartial = () =>
     applyFilters({ ...filters, roles: [], locations: [], cursor: null });
 
@@ -195,31 +209,46 @@ function FeedInner() {
         onReset={resetFilters}
       />
 
-      {/* PARTIAL 접이식 배너 — 모아보기 가치 보호 */}
+      {/* PARTIAL 접이식 배너 — 모아보기 가치 보호.
+          role 필터 활성 시 펼침 = 아래 "직무 미분류 별도 구획" 열기(12.8(5)).
+          필터 결과 목록에는 섞지 않는다(12.6 혼입 금지 유지). */}
       {partialHiddenCount > 0 && (
         <div className="partialBanner">
           <button
             type="button"
             className="partialBanner__toggle"
             aria-expanded={showPartial}
+            aria-controls={roleActive ? UNASSIGNED_SECTION_ID : undefined}
             onClick={() => setShowPartial((v) => !v)}
           >
             <span aria-hidden="true">{showPartial ? "▾" : "▸"}</span>
             현재 조건으로 확인이 어려운 공고 {partialHiddenCount}건
+            {roleActive && !showPartial && (
+              <span className="card__metaText"> — 펼쳐서 보기</span>
+            )}
           </button>
           {showPartial && (
             <div className="partialBanner__body">
-              <p>
-                자동 수집이 제한돼 직무·지역 정보가 비어 있는 공고예요. 조건 필터에
-                걸려 가려졌지만, 놓치지 않도록 알려드려요.
-              </p>
-              <button
-                type="button"
-                className="btn btn--outline btn--sm"
-                onClick={revealPartial}
-              >
-                직무·지역 필터 풀고 이 공고들도 보기
-              </button>
+              {roleActive ? (
+                <p>
+                  대부분 직무가 분류되지 않은 공고예요(공공기관 통합공채 등).
+                  필터 결과와 섞이지 않도록 목록 아래 별도 구획에 나열했어요.
+                </p>
+              ) : (
+                <>
+                  <p>
+                    자동 수집이 제한돼 직무·지역 정보가 비어 있는 공고예요. 조건
+                    필터에 걸려 가려졌지만, 놓치지 않도록 알려드려요.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn--outline btn--sm"
+                    onClick={revealPartial}
+                  >
+                    직무·지역 필터 풀고 이 공고들도 보기
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -265,6 +294,15 @@ function FeedInner() {
             </div>
           )}
         </>
+      )}
+
+      {/* 직무 미분류(통합공채 등) 별도 구획 — 필터 결과 "아래", 섞지 않음.
+          role 필터 활성 + 사용자가 넛지를 펼쳤을 때만 마운트(접힘이 기본). */}
+      {roleActive && showPartial && !loading && (
+        <UnassignedSection
+          filters={filters}
+          onCollapse={() => setShowPartial(false)}
+        />
       )}
     </div>
   );

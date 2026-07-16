@@ -291,12 +291,15 @@ type JobDTO = Job & {
 
 규약: 날짜=ISO 8601 문자열, 페이지네이션=커서 방식, 에러=`{ error: { code, message } }`+HTTP status, 빈 결과는 에러 아님(`items: []`).
 
+- `role` 예약 토큰 **`unassigned`** (2026-07-17 신설): `jobRole=null`(직무 미분류 — 공공 통합공채 등) 공고를 뜻한다. 단독(`role=unassigned`) 또는 다른 값과 콤마 조합(`role=backend,unassigned` = backend 이거나 미분류) 가능. 11장 ③ 채택(2026-07-17)의 집행 수단 — 펼침 구획이 이걸로 조회한다. 동작 세부는 12.6.
+
 ### 12.6 정렬·필터 규약 (양쪽 합의)
 - **마감 지난 공고는 기본 제외**(`includeExpired=false`). 단 GET /api/bookmarks는 includeExpired 무시(마감도 표시).
 - **마감임박순(sort=deadline)**: 커서는 `(deadline, id)` 복합. `deadline=null`(상시채용)은 **항상 맨 뒤**, 프론트는 "상시" 뱃지.
   - **[재확인 — 2026-07-16] 이 규약은 유지한다.** 카카오 공고 28건이 전부 상시라 기본 피드에서 밀린다는 이유로 "`dataQuality`/`jobRole` 유무를 1차 정렬 축으로" 바꾸자는 제안이 있었으나 **기각**. ① 정렬 이름이 곧 사용자와의 약속이다 — "마감임박순"을 골랐는데 상시채용이 위에 오면 정렬이 거짓말이 된다(마감 3일 남은 PARTIAL 공고가 상시 FULL 공고 뒤로 밀린다). ② **오진이었다**: 기본 피드를 잡알리오가 독식하는 원인은 "상시가 뒤로 밀려서"가 아니라 **잡알리오가 범위 밖 통합공채를 대량 수집해서**다(12.8(5) 실측). 정렬 변경은 그 노이즈를 뒤로 숨길 뿐 `totalCount`("내 조건 94건")의 과대 계상은 그대로 둔다. 원인은 수집에서 잘라야 한다.
   - **측정 지점 주의**: "필터 없는 기본 피드"는 **주 경로가 아니다.** 온보딩 조건은 피드의 초기 필터 프리셋이므로(6장, `presetFromPreference`) 실사용자는 `role` 이 걸린 피드를 본다. 소스 노출 균형을 판단할 땐 **프리셋이 걸린 상태**로 측정할 것.
 - **최신순(sort=recent)**: `postedAt` **내림차순**. `postedAt=null`은 **항상 맨 뒤**(deadline 규약과 대칭), 커서는 `(postedAt, id)` 복합.
+- **`role` 예약 토큰 `unassigned` (2026-07-17, 12.8(5) ③ 채택의 집행 수단)**: role 값 집합에 `unassigned` 가 포함되면 조건은 `jobRole IN (지정 role들) OR jobRole IS NULL` 이다. 대상은 오직 `jobRole=null` 이며, 다른 사유의 PARTIAL(예: `location=null` 인 유직무 공고)은 포함하지 않는다. 다른 필터(location/experience/keyword/includeExpired)와는 기존대로 AND 조합, 정렬 규약 변경 없음. `totalCount` 는 이 조건을 포함한 최종 매칭 수, `partialHiddenCount` 는 기존 규칙대로 활성 필터 차원의 null 로 가려진 수만 센다(`role=unassigned` 단독 + 다른 필터 없음이면 0). `unassigned` 는 예약어로, 실제 직무 role 값으로 등록 금지. "미지의 role 값은 조용히 무시" 규약은 유지된다(`unassigned` 는 미지값이 아님).
 - **PARTIAL 공고**: 조건 필터 시 null 필드 때문에 전부 사라지지 않도록, 필터로 가려지는 PARTIAL 공고 수를 `partialHiddenCount`로 반환 → 프론트는 "조건 확인 어려운 공고 N건"을 접이식으로 노출(모아보기 가치 보호).
   - **[재확인 — 2026-07-16] `location null`은 PARTIAL 사유로 유지한다.** 카카오 공고 20건이 `location` 만 비어 PARTIAL 이 되니 판정에서 빼자는 제안이 있었으나 **기각 — 실측상 역효과**. `partialHiddenCount` 넛지는 `dataQuality === "PARTIAL"` 을 전제로 켜지므로(구현: `src/app/api/jobs/route.ts`), location null 을 FULL 로 올리면 지역 필터를 건 순간 그 공고들이 **넛지도 없이 조용히 사라진다**(실측: 지역 필터 시 location null 57건이 현재는 전부 카운트됨). 즉 판정 완화는 노출을 늘리는 게 아니라 **12.6이 지키려던 안전망을 제거**한다. PARTIAL 은 노출을 막지 않으며(피드에 그대로 뜬다) 필터로 가려질 때만 카운트되므로, 현행 판정이 "쓸 만한 공고를 벌주는" 구조가 아니다.
     - 다만 `dataQuality` 가 2값(FULL/PARTIAL)이라 "지역만 빈 공고"와 "제목·회사가 빈 공고"를 구분하지 못하는 것은 **실재하는 표현력 한계**다 → **M2 과제**(결손 축을 필드 단위로 노출). M1 범위 밖.

@@ -121,6 +121,72 @@ describe("GET /api/jobs — 필터와 PARTIAL 보호 집계 (12.6)", () => {
   });
 });
 
+describe("GET /api/jobs — role 예약 토큰 unassigned (12.6)", () => {
+  it("role=unassigned 단독 → jobRole=null 전부(품질 무관), partialHiddenCount=0", async () => {
+    await mkJob({ jobRole: "backend" }); // t001 — 유직무 → 제외
+    await mkJob({ jobRole: null, dataQuality: "PARTIAL" }); // t002 — 매칭
+    await mkJob({ jobRole: null, dataQuality: "FULL" }); // t003 — 매칭(품질 무관)
+
+    const body = await callJobs("?role=unassigned");
+    expect(body.items.length).toBeGreaterThanOrEqual(1);
+    expect(body.items.map((j) => j.id)).toEqual(["t002", "t003"]);
+    expect(body.items.every((j) => j.jobRole === null)).toBe(true);
+    expect(body.totalCount).toBe(2);
+    // 단독 + 다른 필터 없음 → null 은 "가려진" 게 아니라 요청된 매칭이므로 0 (12.6)
+    expect(body.partialHiddenCount).toBe(0);
+  });
+
+  it("role=backend,unassigned → backend 이거나 미분류(OR), backend 단독 이상 totalCount", async () => {
+    await mkJob({ jobRole: "backend" }); // t001 — 매칭
+    await mkJob({ jobRole: "frontend" }); // t002 — 제외
+    await mkJob({ jobRole: null, dataQuality: "PARTIAL" }); // t003 — unassigned 로 매칭
+
+    const backendOnly = await callJobs("?role=backend");
+    const combined = await callJobs("?role=backend,unassigned");
+
+    expect(backendOnly.items.map((j) => j.id)).toEqual(["t001"]);
+    expect(backendOnly.partialHiddenCount).toBe(1); // t003 은 기존 규칙대로 숨김 카운트
+
+    expect(combined.items.map((j) => j.id)).toEqual(["t001", "t003"]);
+    expect(combined.partialHiddenCount).toBe(0); // t003 이 매칭으로 승격 → 숨김 아님
+    expect(combined.totalCount).toBeGreaterThanOrEqual(backendOnly.totalCount);
+    expect(combined.items.length).toBeGreaterThan(backendOnly.items.length);
+  });
+
+  it("location null 유직무 공고는 unassigned 결과에 섞이지 않는다(대상은 오직 jobRole=null)", async () => {
+    await mkJob({ jobRole: null }); // t001 — 매칭
+    await mkJob({ jobRole: "frontend", location: null, dataQuality: "PARTIAL" }); // t002 — 다른 사유 PARTIAL, 비포함
+
+    const body = await callJobs("?role=unassigned");
+    expect(body.items.map((j) => j.id)).toEqual(["t001"]);
+    expect(body.totalCount).toBe(1);
+    expect(body.partialHiddenCount).toBe(0); // location 필터 비활성 → 그 차원 숨김 카운트 없음
+  });
+
+  it("미지값은 여전히 조용히 무시 — role=zzz 는 빈 목록, role=zzz,unassigned 는 null 버킷만", async () => {
+    await mkJob({ jobRole: "backend" }); // t001
+    await mkJob({ jobRole: null, dataQuality: "PARTIAL" }); // t002
+
+    const unknownOnly = await callJobs("?role=zzz"); // callJobs 가 200 을 단언(500 금지)
+    expect(unknownOnly.items).toEqual([]);
+    expect(unknownOnly.partialHiddenCount).toBe(1); // t002 는 기존 PARTIAL 보호 규칙대로
+
+    const mixed = await callJobs("?role=zzz,unassigned");
+    expect(mixed.items.map((j) => j.id)).toEqual(["t002"]); // zzz 만 조용히 무시
+    expect(mixed.totalCount).toBe(1);
+  });
+
+  it("role=unassigned + location 필터: location=null PARTIAL 은 location 차원으로 가려져 카운트된다", async () => {
+    await mkJob({ jobRole: null, location: "서울", dataQuality: "PARTIAL" }); // t001 — 매칭
+    await mkJob({ jobRole: null, location: null, dataQuality: "PARTIAL" }); // t002 — location 차원 숨김
+
+    const body = await callJobs("?role=unassigned&location=서울");
+    expect(body.items.map((j) => j.id)).toEqual(["t001"]);
+    expect(body.partialHiddenCount).toBe(1); // 활성 필터(location) 차원의 null 로 가려진 수만 (12.6)
+    expect(body.totalCount).toBe(2); // kept 1 + hidden 1
+  });
+});
+
 describe("GET /api/jobs — 커서 페이지네이션", () => {
   it("PAGE_SIZE(20) 초과분은 nextCursor 로 잇는다", async () => {
     for (let i = 0; i < 22; i++) {
