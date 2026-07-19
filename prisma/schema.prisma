@@ -17,6 +17,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// 회사 엔티티 (OS.md 12.9 — M2a 조각 ①, 2026-07-19 확정)
+/// 동일성 키 = normName(12.8(3) normCompany 규칙 재사용). name 은 최초 관측
+/// 원문을 유지한다(재수집 시 덮어쓰지 않음 — 안정 라벨).
+model Company {
+  id             String   @id @default(cuid())
+  name           String
+  normName       String   @unique
+  careersPageUrl String? // M3 ATS 어댑터 수집 대상 (조각 ①에선 입력 경로 없음)
+  createdAt      DateTime @default(now())
+
+  jobs Job[]
+}
+
 /// 정규화 공통 공고 스키마 (OS.md 12.3)
 model Job {
   id              String    @id @default(cuid())
@@ -25,7 +38,8 @@ model Job {
   url             String // 원문 출처 URL (폴백 시에도 항상 채움)
   title           String
   companyName     String
-  companyId       String? // M2 회사 리서치 연결용(M1 은 null)
+  companyId       String? // 회사 연결(12.9 조각 ①). placeholder "(회사 미확인)" 만 null 잔존
+  company         Company?  @relation(fields: [companyId], references: [id])
   jobRole         String? // 직무 분류(코드→라벨 매핑됨). M1 개발직군 한정
   location        String? // 지역(코드→라벨 매핑됨)
   experienceLevel String // "NEW" | "EXPERIENCED" | "ANY"  (SQLite enum 미지원 → String)
@@ -53,6 +67,8 @@ model Job {
   @@index([jobRole])
   @@index([location])
   @@index([experienceLevel])
+  // 구독 필터(subscribedOnly, 12.9 — 조각 ②)와 회사별 공고 조회 대비
+  @@index([companyId])
 }
 
 /// 관심 공고 저장 (OS.md 12.3). isBookmarked 는 Job 컬럼이 아님 → 응답 DTO 에서 join 계산.

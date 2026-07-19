@@ -45,6 +45,7 @@ function runCollectExpectFail(env: Record<string, string>): { status: number; st
 beforeEach(async () => {
   await prisma.bookmark.deleteMany();
   await prisma.job.deleteMany();
+  await prisma.company.deleteMany(); // FK 참조하는 job 을 먼저 지운 뒤
 });
 
 describe("collect — fixture 경로 end-to-end + idempotent (12.8)", () => {
@@ -109,6 +110,72 @@ describe("collect — fixture 경로 end-to-end + idempotent (12.8)", () => {
     expect(rows.every((r) => r.url.startsWith("https://careers.kakao.com/jobs/"))).toBe(true);
     // [실측] 카카오 테크 공고는 상시채용 → deadline 전건 null
     expect(rows.every((r) => r.deadline === null)).toBe(true);
+  });
+});
+
+describe("collect — 회사-공고 연결 (12.9 조각 ①)", () => {
+  it("수집 시 companyId 가 채워지고, 재실행해도 Company 중복 생성 0", { timeout: 90_000 }, async () => {
+    runCollect({ COLLECT_SOURCE: "kakao-fixture" });
+    const jobs = await prisma.job.findMany({ where: { source: "kakao" } });
+    expect(jobs.length).toBeGreaterThan(0);
+    expect(jobs.every((j) => j.companyId !== null)).toBe(true); // 카카오 fixture 는 회사명 전건 존재
+
+    // Company 행 수 = distinct 회사 수 (normName UNIQUE)
+    const companies = await prisma.company.count();
+    const distinctNames = new Set(jobs.map((j) => j.companyName)).size;
+    expect(companies).toBe(distinctNames);
+
+    runCollect({ COLLECT_SOURCE: "kakao-fixture" }); // 재수집
+    expect(await prisma.company.count()).toBe(companies); // 중복 생성 0
+  });
+
+  it('placeholder "(회사 미확인)" 공고는 연결하지 않는다 (companyId null 유지)', { timeout: 60_000 }, async () => {
+    runCollect({ COLLECT_SOURCE: "saramin-fixture" }); // 회사명 누락 1건 포함 fixture
+    const placeholder = await prisma.job.findMany({ where: { companyName: "(회사 미확인)" } });
+    expect(placeholder.length).toBeGreaterThan(0);
+    expect(placeholder.every((j) => j.companyId === null)).toBe(true);
+    // 가짜 회사 엔티티가 생기지 않았다
+    expect(await prisma.company.count({ where: { name: "(회사 미확인)" } })).toBe(0);
+  });
+
+  it("backfill: 기존 행(companyId null)을 같은 규칙으로 연결, idempotent", { timeout: 90_000 }, async () => {
+    // 조각 ① 이전에 적재된 행을 흉내 낸다 — companyId 없이 직접 insert
+    const base = {
+      url: "https://example.com/job",
+      title: "백엔드 개발자",
+      experienceLevel: "ANY",
+      dataQuality: "PARTIAL",
+      dedupKey: "테스트|backend|",
+    };
+    await prisma.job.create({
+      data: { ...base, source: "test", sourceJobId: "b1", companyName: "(주)백필테스트" },
+    });
+    await prisma.job.create({
+      data: { ...base, source: "test", sourceJobId: "b2", companyName: "주식회사 백필테스트" }, // 같은 회사(정규화 동일)
+    });
+    await prisma.job.create({
+      data: { ...base, source: "test", sourceJobId: "b3", companyName: "(회사 미확인)" },
+    });
+
+    const run = () =>
+      execSync("npx tsx scripts/backfill-companies.ts", {
+        env: { ...process.env, DATABASE_URL: "file:./test.db" },
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+    const first = run();
+    expect(first).toMatch(/연결 2건/); // placeholder 제외
+    expect(first).toMatch(/신규 회사 1곳/); // 정규화 동일 → 회사 1곳으로 수렴
+
+    const linked = await prisma.job.findMany({ where: { source: "test" }, orderBy: { sourceJobId: "asc" } });
+    expect(linked[0].companyId).not.toBeNull();
+    expect(linked[0].companyId).toBe(linked[1].companyId); // 같은 회사로 연결
+    expect(linked[2].companyId).toBeNull(); // placeholder 는 그대로
+
+    const second = run(); // 재실행 무해
+    expect(second).toMatch(/연결 0건/);
+    expect(second).toMatch(/신규 회사 0곳/);
   });
 });
 

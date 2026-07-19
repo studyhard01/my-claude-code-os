@@ -13,6 +13,7 @@ import {
   mapExperience,
   mapJobRole,
   mapLocation,
+  normalizeCompanyName,
   normalizeRawJob,
 } from "@/lib/collect/normalizer";
 import type { RawJob } from "@/lib/collect/source-adapter";
@@ -63,6 +64,22 @@ describe("mapJobRole — job-code.name 키워드 → 직무 라벨", () => {
   it("매핑 실패·입력 없음 → null", () => {
     expect(mapJobRole("영업관리")).toBeNull();
     expect(mapJobRole(undefined)).toBeNull();
+  });
+});
+
+describe("normalizeCompanyName — 12.8(3) normCompany = Company.normName 단일 출처 (12.9)", () => {
+  it("(주)/㈜/주식회사 제거 → 공백 제거 → 소문자", () => {
+    expect(normalizeCompanyName("(주)카카오페이")).toBe("카카오페이");
+    expect(normalizeCompanyName("주식회사 카카오")).toBe("카카오");
+    expect(normalizeCompanyName("㈜ 한국 데이터 산업진흥원")).toBe("한국데이터산업진흥원");
+    expect(normalizeCompanyName("Kakao Corp")).toBe("kakaocorp");
+  });
+
+  it("dedupKey 의 회사 축과 항상 일치한다 (같은 함수를 쓰므로 규칙이 어긋날 수 없음)", () => {
+    const name = "(주)카카오 모빌리티";
+    expect(computeDedupKey(name, "backend", "경기").split("|")[0]).toBe(
+      normalizeCompanyName(name),
+    );
   });
 });
 

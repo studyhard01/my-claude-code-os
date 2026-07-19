@@ -211,9 +211,20 @@ function toIso(v: string | undefined): string | null {
 }
 
 /**
+ * normCompany (12.8 (3)): "(주)"/"㈜"/"주식회사" 제거 → 모든 공백 제거 → 소문자.
+ * dedupKey 의 회사 축이자 Company.normName(12.9 — 회사 동일성 키)의 단일 출처.
+ * 두 용처가 같은 함수를 쓰므로 규칙이 어긋날 수 없다.
+ */
+export function normalizeCompanyName(companyName: string): string {
+  return companyName
+    .replace(/\(주\)|㈜|주식회사/g, "")
+    .replace(/\s+/g, "")
+    .toLowerCase();
+}
+
+/**
  * dedupKey 계산 (12.8 (3) — 12.3 "회사+직무+지역" 구체화):
  *   normCompany|jobRole|location.
- *   normCompany = "(주)"/"㈜"/"주식회사" 제거 → 모든 공백 제거 → 소문자.
  * unique 아님 — 계산·저장만 하고 실제 병합은 M3.
  */
 export function computeDedupKey(
@@ -221,11 +232,7 @@ export function computeDedupKey(
   jobRole: string | null,
   location: string | null,
 ): string {
-  const normCompany = companyName
-    .replace(/\(주\)|㈜|주식회사/g, "")
-    .replace(/\s+/g, "")
-    .toLowerCase();
-  return `${normCompany}|${jobRole ?? ""}|${location ?? ""}`;
+  return `${normalizeCompanyName(companyName)}|${jobRole ?? ""}|${location ?? ""}`;
 }
 
 /** RawJob → JobUpsertInput. 시그니처는 12.8 계약 고정. */

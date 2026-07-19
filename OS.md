@@ -387,25 +387,40 @@ type JobDTO = Job & {
 - 수집 예의: 인증키 불필요(공개 엔드포인트)이나 **저빈도(1회 실행당 최소 콜)·User-Agent 명시** 준수(7장 원칙).
 - 파이프라인 고정 규약((4))·dedupKey 체계(12.8(3)) 동일 적용.
 
-### 12.9 M2a 계약 초안 — 회사 구독 (초안, 2026-07-14)
+### 12.9 M2a 계약 — 회사 구독 (2026-07-19 확정)
 
-> **초안이다.** 구현은 M2 시작 시점이며, 확정 시 세부(필드·API 형태)는 조정될 수 있다.
-> M1 계약(`contract.ts`·API 8종)에는 영향 없음. `Job.companyId`(12.3)가 연결 자리를 이미 확보하고 있다.
+> 2026-07-14 초안을 M2a 조각 ① 착수 시점에 확정(확정 절차는 2026-07-17 결정대로).
+> 구현은 조각 ①~③으로 나눠 진행하며(9장), 이 절은 세 조각이 따를 공통 계약이다.
+> **M1 API 8종의 기존 형태는 변경 없음** — 피드는 필터 축 1개(subscribedOnly)만 늘어난다.
 
-**Company (최소 필드)**
+**Company**
 | 필드 | 타입 | 비고 |
 |---|---|---|
-| id | string | 내부 안정 ID |
-| name | string | 회사명(정규화 — 12.8(3) normCompany 규칙 재사용 후보) |
-| careersPageUrl | string \| null | 공식 채용 페이지 URL — M3 ATS 어댑터 수집 대상 |
+| id | string | 내부 안정 ID (cuid) |
+| name | string | 대표 표기명 — **최초 관측된 companyName 원문**(재수집 시 덮어쓰지 않음, 안정 라벨) |
+| normName | string | **회사 동일성 키 = 12.8(3) normCompany 규칙 재사용(확정). UNIQUE** |
+| careersPageUrl | string \| null | 공식 채용 페이지 URL — M3 ATS 수집 대상. 조각 ①에선 입력 경로가 없어 항상 null |
 
-**CompanySubscription (사용자↔회사 구독)**
-`{ id: string; companyId: string; createdAt: string }` — M1과 같이 단일 로컬 사용자 전제. userId 는 정식 인증 도입(M2~M3) 시 추가.
+- 동일성의 한계(명시): normCompany 충돌(다른 회사가 같은 정규화 이름)·표기 변형 미포착 가능성은 dedupKey 가 이미 감수한 수준으로 수용한다. 법인 단위 식별(사업자번호 등)은 M2b DART 연결에서 재검토(원본 힌트는 rawData 에 보존 — 12.3 A-3).
 
-- 피드: `GET /api/jobs` 에 "구독 회사만" 필터 축 1개 추가 예정(파라미터 형태는 M2a 확정 시).
-- 온보딩: "관심 회사 등록"(선택) 단계 추가(6장). 미등록 사용자 경험은 M1과 동일.
-- M3 연결: 구독 목록 = 회사 채용 페이지 수집 대상 목록(9장 M3).
-- **확정 절차(2026-07-17)**: 이 절은 **M2a 조각 ①(Company 엔티티 + 회사-공고 연결) 착수 시점에 Draft PR 로 확정**한다(그 전까지 초안 유지). 그때 결정할 항목: 구독 필터 파라미터 이름, `/api/companies` 검색·목록 API 형태, 기존 Job 행 backfill 규칙(12.8(3) normCompany 매칭 재사용 여부). M2 PR #1(12.10)은 이 절에 의존하지 않는다.
+**회사-공고 연결 (조각 ①)**
+- 수집 시: `normalizeRawJob` 결과의 companyName → normName 계산 → Company upsert(normName 기준) → `Job.companyId` 채움.
+- **placeholder `"(회사 미확인)"` 은 연결하지 않는다**(companyId null 유지) — 가짜 회사 엔티티 방지.
+- **backfill(확정 — normCompany 매칭 재사용)**: 기존 Job 행도 같은 규칙으로 일괄 연결. `npm run db:backfill-companies`, **idempotent**(companyId null 행만 처리, 재실행 무해).
+
+**CompanySubscription (조각 ②)**
+`{ id: string; companyId: string; createdAt: string }` — 단일 로컬 사용자 전제(12.3과 동일), **회사당 구독 1개**(companyId UNIQUE — Bookmark 의 jobId UNIQUE 패턴). userId 는 정식 인증 도입(M2~M3) 시 추가.
+
+**API (형태 확정 — 구현은 조각 ②③. Bookmark 계열 패턴 미러링)**
+- `GET /api/companies?keyword=&limit=` — 회사 검색·목록(온보딩 관심 회사 등록·구독 관리용). 응답 항목에 `isSubscribed` 포함(isBookmarked 패턴 — DTO 에서 join 계산).
+- `POST /api/subscriptions { companyId }` — 구독 생성(idempotent — 이미 있으면 기존 반환), `DELETE /api/subscriptions/:id`, `GET /api/subscriptions` — 구독 목록(= M3 회사 채용 페이지 수집 대상 목록, 9장).
+- **피드 필터 축(확정)**: `GET /api/jobs?subscribedOnly=true` — **구독한 회사의 공고만**. `"true"` 외 값·부재 = false. companyId null 공고는 제외되며 이는 이름 그대로의 동작이다(12.5 `partialOnly` 기각 때의 "이름이 거짓말하면 기각" 기준 통과). 다른 필터 축과 AND 결합, 12.6 정렬·집계 규약 그대로 적용.
+
+**조각 ① 완료 기준(측정 지점 명시)**
+1. 수집 시 신규/갱신 Job 에 companyId 가 채워진다(placeholder 제외) — fixture 와 라이브 실측.
+2. backfill 후 companyId 보유율 실측 보고, Company 행 수 = distinct normName 수, 재실행 시 신규 0.
+3. 같은 회사 재수집 시 Company 중복 생성 0(normName UNIQUE 가 기계적으로 보장).
+4. 기존 API 8종 응답 형태 무변경, `npm run typecheck`·`test`·`eval` 100 유지.
 
 ### 12.10 M2 착수 조각 계약 — 직무 카탈로그 확장 (2026-07-17 확정)
 
