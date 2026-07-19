@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { BookmarkProvider } from "@/lib/bookmarks";
+import { SubscriptionProvider } from "@/lib/subscriptions";
 import Nav from "@/components/Nav";
 
 export const metadata: Metadata = {
@@ -16,10 +17,12 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
-        {/* 북마크 상태(실 DB API + 낙관적 업데이트)를 전 화면에서 공유 → 최상단 provider */}
+        {/* 북마크·구독 상태(실 DB API + 낙관적 업데이트)를 전 화면에서 공유 → 최상단 provider */}
         <BookmarkProvider>
-          <Nav />
-          <main className="container">{children}</main>
+          <SubscriptionProvider>
+            <Nav />
+            <main className="container">{children}</main>
+          </SubscriptionProvider>
         </BookmarkProvider>
       </body>
     </html>

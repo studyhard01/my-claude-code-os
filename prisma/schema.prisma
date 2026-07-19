@@ -27,7 +27,20 @@ model Company {
   careersPageUrl String? // M3 ATS 어댑터 수집 대상 (조각 ①에선 입력 경로 없음)
   createdAt      DateTime @default(now())
 
-  jobs Job[]
+  jobs          Job[]
+  subscriptions CompanySubscription[]
+}
+
+/// 사용자↔회사 구독 (OS.md 12.9 — M2a 조각 ②). M1 과 같은 단일 로컬 사용자 전제 →
+/// 회사당 구독 1개(@@unique([companyId]) — Bookmark 의 jobId UNIQUE 패턴, POST idempotent 근거).
+/// userId 는 정식 인증 도입(M2~M3) 시 추가.
+model CompanySubscription {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([companyId])
 }
 
 /// 정규화 공통 공고 스키마 (OS.md 12.3)

@@ -150,6 +150,42 @@ export interface UpdateBookmarkResponse {
   status: BookmarkStatus;
 }
 
+// ---- 회사·구독 API (OS.md 12.9 — M2a 조각 ②. Bookmark 계열 패턴 미러링) ----
+
+/**
+ * GET /api/companies 응답 항목.
+ * isSubscribed 는 Company 컬럼이 아니라 구독 join 으로 계산(isBookmarked 패턴).
+ */
+export type CompanyListItem = Company & {
+  /** 현재 구독 중인지 — 온보딩 관심 회사 선택·구독 관리 UI 의 초기 상태 근거 */
+  isSubscribed: boolean;
+};
+
+/** GET /api/companies?keyword=&limit= 응답. 빈 결과는 에러 아님(items: []) */
+export interface CompaniesListResponse {
+  items: CompanyListItem[];
+}
+
+/**
+ * GET /api/subscriptions 응답 (최신 구독순).
+ * 카드/상세의 구독 상태는 프론트가 items 를 companyId 로 매칭해 판단한다
+ * (JobDTO 에 구독 필드를 추가하지 않음 — 12.9 계약 범위 밖).
+ */
+export interface SubscriptionsListResponse {
+  items: CompanySubscription[];
+}
+
+/** POST /api/subscriptions 요청 바디 */
+export interface CreateSubscriptionBody {
+  companyId: string;
+}
+
+/**
+ * POST /api/subscriptions 응답.
+ * idempotent — 이미 구독 중이면 기존 구독을 그대로 반환(Bookmark POST 패턴).
+ */
+export type CreateSubscriptionResponse = CompanySubscription;
+
 /** 표준 에러 형태 (OS.md 12.5). HTTP status 와 함께 전달. 빈 결과는 에러 아님(items: []) */
 export interface ApiError {
   error: {
@@ -180,7 +216,7 @@ export interface JobsQuery {
   deadlineWithin?: number;
   /** 마감 지난 공고 포함 여부. 기본 false */
   includeExpired?: boolean;
-  /** 구독한 회사의 공고만 (12.9 확정). 서버는 "true" 만 참. 구현은 M2a 조각 ② */
+  /** 구독한 회사의 공고만 (12.9 확정). 서버는 "true" 만 참(그 외 값·부재 = false) */
   subscribedOnly?: boolean;
   cursor?: string;
 }

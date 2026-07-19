@@ -72,6 +72,13 @@ export default function AppliedFilters({
       remove: () => ({ includeExpired: false }),
     });
   }
+  if (value.subscribedOnly) {
+    chips.push({
+      key: "subscribed",
+      label: "구독 회사만",
+      remove: () => ({ subscribedOnly: false }),
+    });
+  }
 
   if (chips.length === 0) return null;
 

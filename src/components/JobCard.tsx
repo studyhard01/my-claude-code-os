@@ -15,6 +15,7 @@ import {
 } from "@/lib/format";
 import { useBookmarks } from "@/lib/bookmarks";
 import BookmarkButton from "./BookmarkButton";
+import SubscribeButton from "./SubscribeButton";
 
 // source 식별자 → 사용자용 라벨. PARTIAL 카드의 원문 CTA·출처 표기에 사용.
 // (기존에 "사람인"이 하드코딩돼 있어 alio/kakao 공고에서 거짓 라벨이 됐다 —
@@ -40,6 +41,14 @@ export default function JobCard({ job }: { job: JobDTO }) {
       <div className="card__top">
         <div className="card__company">
           <span className="card__companyName">{job.companyName}</span>
+          {/* 회사 단위 구독(12.9). companyId null(회사 미확인)이면 미노출 */}
+          {job.companyId && (
+            <SubscribeButton
+              companyId={job.companyId}
+              companyName={job.companyName}
+              size="sm"
+            />
+          )}
           {isPartial && (
             <span className="badge badge--warn" title="자동 수집이 제한된 공고">
               조건 확인 필요

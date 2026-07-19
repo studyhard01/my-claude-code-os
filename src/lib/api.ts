@@ -22,6 +22,9 @@ import type {
   BookmarksListResponse,
   CreateBookmarkResponse,
   UpdateBookmarkResponse,
+  CompaniesListResponse,
+  SubscriptionsListResponse,
+  CreateSubscriptionResponse,
 } from "@/types/contract";
 import {
   DEV_ROLE_OPTIONS,
@@ -39,6 +42,8 @@ export interface FeedFilters {
   sort: JobSort;
   deadlineWithin: number | null;
   includeExpired: boolean;
+  /** 구독한 회사의 공고만 (OS.md 12.9). 서버는 "true" 만 참 → 직렬화도 true 일 때만 */
+  subscribedOnly: boolean;
   cursor?: string | null;
 }
 
@@ -50,6 +55,7 @@ export const DEFAULT_FILTERS: FeedFilters = {
   sort: "deadline",
   deadlineWithin: null,
   includeExpired: false,
+  subscribedOnly: false,
   cursor: null,
 };
 
@@ -91,6 +97,7 @@ export function buildJobsQuery(f: FeedFilters): string {
   p.set("sort", f.sort);
   if (f.deadlineWithin != null) p.set("deadlineWithin", String(f.deadlineWithin));
   if (f.includeExpired) p.set("includeExpired", "true");
+  if (f.subscribedOnly) p.set("subscribedOnly", "true"); // "true" 만 참 (12.9)
   if (f.cursor) p.set("cursor", f.cursor);
   return p.toString();
 }
@@ -113,6 +120,7 @@ export function hasFilterParams(params: URLSearchParams): boolean {
     "sort",
     "deadlineWithin",
     "includeExpired",
+    "subscribedOnly",
   ].some((k) => (params.get(k) ?? "").trim() !== "");
 }
 
@@ -135,6 +143,7 @@ export function filtersFromParams(params: URLSearchParams): FeedFilters {
     sort: params.get("sort") === "recent" ? "recent" : "deadline",
     deadlineWithin,
     includeExpired: params.get("includeExpired") === "true",
+    subscribedOnly: params.get("subscribedOnly") === "true", // 서버 규약과 동일(12.9)
     cursor: null,
   };
 }
@@ -215,21 +224,76 @@ export async function updateBookmark(
   return parse<UpdateBookmarkResponse>(res);
 }
 
+/** 204(본문 없음) 응답 공통 처리 — 성공은 조용히, 실패는 ApiError → throw */
+async function parseNoContent(res: Response, fallbackMessage: string): Promise<void> {
+  if (res.ok) return; // 204 는 본문 없음 → 정상
+  let message = `${fallbackMessage} (${res.status})`;
+  let code = "HTTP_" + res.status;
+  try {
+    const body = (await res.json()) as ApiError;
+    if (body?.error?.message) message = body.error.message;
+    if (body?.error?.code) code = body.error.code;
+  } catch {
+    /* 본문 없음 */
+  }
+  throw new ApiRequestError(message, res.status, code);
+}
+
 /** DELETE /api/bookmarks/:id — 삭제(204, 본문 없음). */
 export async function deleteBookmark(bookmarkId: string): Promise<void> {
   const res = await fetch(`/api/bookmarks/${encodeURIComponent(bookmarkId)}`, {
     method: "DELETE",
   });
-  if (!res.ok) {
-    let message = `삭제에 실패했어요 (${res.status})`;
-    let code = "HTTP_" + res.status;
-    try {
-      const body = (await res.json()) as ApiError;
-      if (body?.error?.message) message = body.error.message;
-      if (body?.error?.code) code = body.error.code;
-    } catch {
-      /* 204 는 본문 없음 → 정상 */
-    }
-    throw new ApiRequestError(message, res.status, code);
-  }
+  await parseNoContent(res, "삭제에 실패했어요");
+}
+
+// ---- 회사·구독 (OS.md 12.9, M2a 조각 ②) ----------------------------------
+// 구독 상태의 진실 출처는 GET /api/subscriptions 목록 하나다. 카드/상세는
+// src/lib/subscriptions.tsx 스토어가 이 목록을 companyId 로 매칭해 그린다
+// (JobDTO 에 구독 필드 없음 — 계약대로). 회사 검색은 조각 ③(온보딩)도 재사용.
+
+/** GET /api/companies?keyword=&limit= — 회사 검색·목록(isSubscribed 포함) */
+export async function fetchCompanies(
+  keyword?: string,
+  limit?: number,
+  signal?: AbortSignal
+): Promise<CompaniesListResponse> {
+  const p = new URLSearchParams();
+  if (keyword?.trim()) p.set("keyword", keyword.trim());
+  if (limit != null) p.set("limit", String(limit));
+  const qs = p.toString();
+  const res = await fetch(`/api/companies${qs ? `?${qs}` : ""}`, {
+    cache: "no-store",
+    signal,
+  });
+  return parse<CompaniesListResponse>(res);
+}
+
+/** GET /api/subscriptions — 구독 목록(최신 구독순). 회사명은 포함되지 않는다. */
+export async function fetchSubscriptions(
+  signal?: AbortSignal
+): Promise<SubscriptionsListResponse> {
+  const res = await fetch(`/api/subscriptions`, { cache: "no-store", signal });
+  return parse<SubscriptionsListResponse>(res);
+}
+
+/** POST /api/subscriptions — 구독 생성(idempotent — 이미 구독 중이면 기존 반환). */
+export async function createSubscription(
+  companyId: string
+): Promise<CreateSubscriptionResponse> {
+  const res = await fetch(`/api/subscriptions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ companyId }),
+  });
+  return parse<CreateSubscriptionResponse>(res);
+}
+
+/** DELETE /api/subscriptions/:id — 구독 해제(204, 본문 없음). */
+export async function deleteSubscription(subscriptionId: string): Promise<void> {
+  const res = await fetch(
+    `/api/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    { method: "DELETE" }
+  );
+  await parseNoContent(res, "구독 해제에 실패했어요");
 }

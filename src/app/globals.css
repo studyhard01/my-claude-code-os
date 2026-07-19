@@ -621,6 +621,45 @@ a {
   font-size: 0.85rem;
 }
 
+/* ---- 회사 구독 버튼 (12.9) ----
+   북마크(노란 별=공고 저장)와 구분되는 브랜드 블루 톤 = 회사 단위 액션.
+   카드의 stretched-link 위에 떠야 하므로 z-index 를 갖는다. */
+.subscribeBtn {
+  position: relative;
+  z-index: 2;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--text-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.subscribeBtn--sm {
+  font-size: 0.72rem;
+  padding: 0.1rem 0.5rem;
+}
+.subscribeBtn--md {
+  font-size: 0.82rem;
+  padding: 0.3rem 0.75rem;
+}
+.subscribeBtn:hover {
+  border-color: var(--brand);
+  color: var(--brand-dark);
+}
+.subscribeBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.subscribeBtn--on {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+}
+
 .feedMore {
   display: flex;
   justify-content: center;
@@ -731,6 +770,12 @@ a {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+}
+.detail__companyRow {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
 }
 .detail__company {
   font-size: 0.9rem;

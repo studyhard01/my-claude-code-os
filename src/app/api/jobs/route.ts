@@ -6,7 +6,8 @@
 //
 // 쿼리(12.5): role(콤마 다중 + 예약 토큰 "unassigned"=jobRole null 버킷, 12.6),
 //   location(콤마 다중), experience(콤마 다중), keyword, sort(deadline|recent),
-//   deadlineWithin(days), includeExpired(기본 false), cursor
+//   deadlineWithin(days), includeExpired(기본 false),
+//   subscribedOnly(12.9 — "true" 만 참, 구독 회사의 공고만), cursor
 //
 // [설계 결정]
 //  - 하드 필터(expired/experience/keyword/deadlineWithin)는 Prisma WHERE 로 DB 에서 처리.
@@ -66,6 +67,8 @@ export async function GET(req: NextRequest) {
       ? Number(deadlineWithinRaw)
       : null;
   const includeExpired = sp.get("includeExpired") === "true";
+  // 12.9: "true" 만 참(그 외 값·부재 = false — includeExpired 와 동일 규약)
+  const subscribedOnly = sp.get("subscribedOnly") === "true";
   const cursor = sp.get("cursor");
 
   const today = startOfToday();
@@ -93,6 +96,13 @@ export async function GET(req: NextRequest) {
   if (deadlineWithin != null && !Number.isNaN(deadlineWithin)) {
     const until = new Date(today.getTime() + deadlineWithin * 86_400_000);
     and.push({ OR: [{ deadline: null }, { deadline: { lte: until } }] });
+  }
+  // 구독 회사만(12.9): 구독이 존재하는 회사에 연결된 공고. 관계 필터라
+  // companyId=null(회사 미확인)은 자연 제외 — "이름 그대로의 동작"(12.9 확정).
+  // 하드 필터로 AND 결합하므로 12.6 집계(totalCount/partialHiddenCount)는
+  // "구독 필터를 통과한 집합" 안에서 기존 의미 그대로 유지된다.
+  if (subscribedOnly) {
+    and.push({ company: { subscriptions: { some: {} } } });
   }
 
   const where: Prisma.JobWhereInput = and.length > 0 ? { AND: and } : {};

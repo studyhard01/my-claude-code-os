@@ -15,6 +15,16 @@ import { prisma } from "@/lib/db";
 import type { JobsListResponse } from "@/types/contract";
 
 let seq = 0;
+let cseq = 0;
+
+/** 회사 생성 (subscribedOnly 테스트용 — 12.9) */
+async function mkCompany(name: string) {
+  cseq += 1;
+  const id = `jc${String(cseq).padStart(3, "0")}`;
+  return prisma.company.create({
+    data: { id, name, normName: `${name.toLowerCase()}-${id}` },
+  });
+}
 
 /** 최소 필수 필드만 채운 Job 생성 (id 는 삽입 순서 고정 — 정렬 tiebreak 예측용) */
 async function mkJob(overrides: Record<string, unknown> = {}) {
@@ -48,8 +58,11 @@ async function callJobs(qs = ""): Promise<JobsListResponse> {
 
 beforeEach(async () => {
   seq = 0;
+  cseq = 0;
+  await prisma.companySubscription.deleteMany();
   await prisma.bookmark.deleteMany();
   await prisma.job.deleteMany();
+  await prisma.company.deleteMany();
 });
 
 describe("GET /api/jobs — 만료·정렬 (12.6)", () => {
@@ -184,6 +197,77 @@ describe("GET /api/jobs — role 예약 토큰 unassigned (12.6)", () => {
     expect(body.items.map((j) => j.id)).toEqual(["t001"]);
     expect(body.partialHiddenCount).toBe(1); // 활성 필터(location) 차원의 null 로 가려진 수만 (12.6)
     expect(body.totalCount).toBe(2); // kept 1 + hidden 1
+  });
+});
+
+describe("GET /api/jobs — subscribedOnly (12.9)", () => {
+  it("subscribedOnly=true → 구독 회사 공고만. companyId null 은 자연 제외", async () => {
+    const kakao = await mkCompany("카카오"); // 구독
+    const naver = await mkCompany("네이버"); // 비구독
+    await prisma.companySubscription.create({ data: { companyId: kakao.id } });
+
+    await mkJob({ companyId: kakao.id }); // t001 — 매칭
+    await mkJob({ companyId: naver.id }); // t002 — 비구독 → 제외
+    await mkJob({ companyId: null }); // t003 — 회사 미확인(FULL 이어도) → 제외
+
+    const body = await callJobs("?subscribedOnly=true");
+    expect(body.items.map((j) => j.id)).toEqual(["t001"]);
+    expect(body.totalCount).toBe(1); // 하드 필터: 제외분은 집계에도 안 들어감(12.6)
+    expect(body.partialHiddenCount).toBe(0);
+  });
+
+  it("다른 필터 축과 AND 결합: subscribedOnly + role", async () => {
+    const kakao = await mkCompany("카카오");
+    const naver = await mkCompany("네이버");
+    await prisma.companySubscription.create({ data: { companyId: kakao.id } });
+
+    await mkJob({ companyId: kakao.id, jobRole: "backend" }); // t001 — 매칭
+    await mkJob({ companyId: kakao.id, jobRole: "frontend" }); // t002 — role 탈락
+    await mkJob({ companyId: naver.id, jobRole: "backend" }); // t003 — 구독 탈락
+
+    const body = await callJobs("?subscribedOnly=true&role=backend");
+    expect(body.items.map((j) => j.id)).toEqual(["t001"]);
+    expect(body.totalCount).toBe(1);
+  });
+
+  it("구독 필터 통과 집합 안에서 12.6 PARTIAL 보호 집계가 그대로 동작한다", async () => {
+    const kakao = await mkCompany("카카오");
+    const naver = await mkCompany("네이버");
+    await prisma.companySubscription.create({ data: { companyId: kakao.id } });
+
+    await mkJob({ companyId: kakao.id, jobRole: "backend" }); // t001 — 매칭
+    await mkJob({ companyId: kakao.id, jobRole: null, dataQuality: "PARTIAL" }); // t002 — 숨김 카운트
+    await mkJob({ companyId: naver.id, jobRole: null, dataQuality: "PARTIAL" }); // t003 — 구독 밖 → 카운트도 안 됨
+
+    const body = await callJobs("?subscribedOnly=true&role=backend");
+    expect(body.items.map((j) => j.id)).toEqual(["t001"]);
+    expect(body.partialHiddenCount).toBe(1); // t002 만 — 구독 집합 내에서만 센다
+    expect(body.totalCount).toBe(2); // kept 1 + hidden 1
+  });
+
+  it("구독이 하나도 없으면 subscribedOnly=true 는 빈 목록(정상 응답, 에러 아님)", async () => {
+    const kakao = await mkCompany("카카오");
+    await mkJob({ companyId: kakao.id });
+
+    const body = await callJobs("?subscribedOnly=true"); // callJobs 가 200 을 단언
+    expect(body.items).toEqual([]);
+    expect(body.totalCount).toBe(0);
+  });
+
+  it('부재·"false"·"true" 외 값은 전부 false — 기존 동작 그대로(회귀 없음)', async () => {
+    const kakao = await mkCompany("카카오");
+    await prisma.companySubscription.create({ data: { companyId: kakao.id } });
+    await mkJob({ companyId: kakao.id }); // t001
+    await mkJob({ companyId: null }); // t002
+
+    const absent = await callJobs();
+    const explicitFalse = await callJobs("?subscribedOnly=false");
+    const nonTrue = await callJobs("?subscribedOnly=1"); // "true" 만 참(12.9)
+
+    for (const body of [absent, explicitFalse, nonTrue]) {
+      expect(body.items.map((j) => j.id)).toEqual(["t001", "t002"]);
+      expect(body.totalCount).toBe(2);
+    }
   });
 });
 
