@@ -48,6 +48,7 @@ describe("buildJobsQuery — FeedFilters → 쿼리스트링 (12.6)", () => {
       sort: "recent",
       deadlineWithin: 7,
       includeExpired: true,
+      subscribedOnly: true,
       cursor: "abc",
     };
     const p = new URLSearchParams(buildJobsQuery(f));
@@ -58,6 +59,7 @@ describe("buildJobsQuery — FeedFilters → 쿼리스트링 (12.6)", () => {
     expect(p.get("sort")).toBe("recent");
     expect(p.get("deadlineWithin")).toBe("7");
     expect(p.get("includeExpired")).toBe("true");
+    expect(p.get("subscribedOnly")).toBe("true"); // 12.9: "true" 만 참 → true 일 때만 직렬화
     expect(p.get("cursor")).toBe("abc");
   });
 
@@ -77,6 +79,7 @@ describe("filtersFromParams — URL → FeedFilters 복원 (12.6: 미지의 값 
       sort: "recent",
       deadlineWithin: 14,
       includeExpired: true,
+      subscribedOnly: true,
       cursor: "cur-1",
     };
     const back = filtersFromParams(new URLSearchParams(buildJobsQuery(f)));
@@ -106,12 +109,19 @@ describe("filtersFromParams — URL → FeedFilters 복원 (12.6: 미지의 값 
     expect(filtersFromParams(new URLSearchParams("includeExpired=true")).includeExpired).toBe(true);
     expect(filtersFromParams(new URLSearchParams("includeExpired=1")).includeExpired).toBe(false);
   });
+
+  it("subscribedOnly 는 정확히 'true' 일 때만 (12.9 서버 규약과 동일)", () => {
+    expect(filtersFromParams(new URLSearchParams("subscribedOnly=true")).subscribedOnly).toBe(true);
+    expect(filtersFromParams(new URLSearchParams("subscribedOnly=1")).subscribedOnly).toBe(false);
+    expect(filtersFromParams(new URLSearchParams("")).subscribedOnly).toBe(false);
+  });
 });
 
 describe("hasFilterParams — URL 이 필터의 진실인지 판정", () => {
   it("필터 파라미터가 하나라도 있으면 true", () => {
     expect(hasFilterParams(new URLSearchParams("sort=recent"))).toBe(true);
     expect(hasFilterParams(new URLSearchParams("role=backend"))).toBe(true);
+    expect(hasFilterParams(new URLSearchParams("subscribedOnly=true"))).toBe(true);
   });
 
   it("없거나·빈 값이거나·무관한 파라미터뿐이면 false", () => {

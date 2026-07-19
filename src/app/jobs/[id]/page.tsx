@@ -23,6 +23,7 @@ import {
 } from "@/lib/format";
 import { useBookmarks } from "@/lib/bookmarks";
 import BookmarkButton from "@/components/BookmarkButton";
+import SubscribeButton from "@/components/SubscribeButton";
 import { ErrorState } from "@/components/states";
 import StatusControl from "@/components/StatusControl";
 
@@ -111,7 +112,17 @@ export default function JobDetailPage({
       </Link>
 
       <header className="detail__head">
-        <div className="detail__company">{job.companyName}</div>
+        <div className="detail__companyRow">
+          <div className="detail__company">{job.companyName}</div>
+          {/* 회사 단위 구독(12.9) — 공고 저장(★)과 별개. companyId null 이면 미노출 */}
+          {job.companyId && (
+            <SubscribeButton
+              companyId={job.companyId}
+              companyName={job.companyName}
+              size="md"
+            />
+          )}
+        </div>
         <h1 className="detail__title">{job.title}</h1>
 
         <div className="detail__tags">

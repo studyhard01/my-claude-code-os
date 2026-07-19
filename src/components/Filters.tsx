@@ -126,6 +126,22 @@ export default function Filters({
         </div>
       </div>
 
+      {/* 회사 — 구독한 회사의 공고만(12.9). 카드/상세의 구독 토글과 연결되는 필터 축 */}
+      <div className="filters__row filters__row--wrap">
+        <span className="filters__label">회사</span>
+        <div className="chips">
+          <button
+            type="button"
+            className={`chip${value.subscribedOnly ? " chip--on" : ""}`}
+            aria-pressed={value.subscribedOnly}
+            title="공고 카드·상세에서 구독한 회사의 공고만 봅니다"
+            onClick={() => patch({ subscribedOnly: !value.subscribedOnly })}
+          >
+            구독 회사만
+          </button>
+        </div>
+      </div>
+
       {/* 마감 임박 빠른 필터 + 키워드 + 마감 포함 */}
       <div className="filters__row filters__row--wrap">
         <span className="filters__label">마감</span>

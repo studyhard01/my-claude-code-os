@@ -24,6 +24,7 @@ import {
   ApiRequestError,
   type FeedFilters,
 } from "@/lib/api";
+import { useSubscriptions } from "@/lib/subscriptions";
 import Filters from "@/components/Filters";
 import AppliedFilters from "@/components/AppliedFilters";
 import JobCard from "@/components/JobCard";
@@ -59,6 +60,8 @@ function FeedInner() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  // "구독 회사만" 빈 상태 분기 근거: 구독 0개(토글을 알려줘야 함) vs 결과만 0건
+  const { ready: subsReady, count: subsCount } = useSubscriptions();
 
   const [filters, setFilters] = useState<FeedFilters>(DEFAULT_FILTERS);
   const [filtersReady, setFiltersReady] = useState(false);
@@ -263,15 +266,59 @@ function FeedInner() {
           onRetry={() => setReloadNonce((n) => n + 1)}
         />
       ) : items.length === 0 ? (
-        <EmptyState
-          title="조건에 맞는 공고가 없어요"
-          description="필터를 넓히거나 초기화해 보세요. 마감 지난 공고를 포함할 수도 있어요."
-          action={
-            <button className="btn btn--primary" onClick={resetFilters}>
-              필터 전체 해제
-            </button>
-          }
-        />
+        // "구독 회사만" 빈 상태는 원인이 두 갈래라 안내가 다르다(행복경로만 = 미완성):
+        //  ① 구독 자체가 0개 → 구독 토글이 어디 있는지 알려주고 피드로 유도
+        //  ② 구독은 있는데 결과 0건 → 필터 완화/토글 해제 유도
+        filters.subscribedOnly && subsReady && subsCount === 0 ? (
+          <EmptyState
+            title="아직 구독한 회사가 없어요"
+            description="공고 카드나 상세에서 회사 이름 옆 [+ 구독] 버튼을 누르면, 그 회사의 공고만 여기서 모아볼 수 있어요."
+            action={
+              <button
+                className="btn btn--primary"
+                onClick={() =>
+                  applyFilters({ ...filters, subscribedOnly: false, cursor: null })
+                }
+              >
+                전체 공고에서 회사 찾아보기
+              </button>
+            }
+          />
+        ) : filters.subscribedOnly ? (
+          <EmptyState
+            title="구독한 회사의 공고가 지금 조건에 없어요"
+            description="다른 필터에 걸렸거나, 구독한 회사에 진행 중인 공고가 없어서예요. 필터를 넓히거나 구독 회사만 보기를 잠시 꺼보세요."
+            action={
+              <>
+                <button
+                  className="btn btn--primary"
+                  onClick={() =>
+                    applyFilters({
+                      ...filters,
+                      subscribedOnly: false,
+                      cursor: null,
+                    })
+                  }
+                >
+                  구독 회사만 끄기
+                </button>
+                <button className="btn btn--ghost" onClick={resetFilters}>
+                  필터 전체 해제
+                </button>
+              </>
+            }
+          />
+        ) : (
+          <EmptyState
+            title="조건에 맞는 공고가 없어요"
+            description="필터를 넓히거나 초기화해 보세요. 마감 지난 공고를 포함할 수도 있어요."
+            action={
+              <button className="btn btn--primary" onClick={resetFilters}>
+                필터 전체 해제
+              </button>
+            }
+          />
+        )
       ) : (
         <>
           <ul className="cardList">
