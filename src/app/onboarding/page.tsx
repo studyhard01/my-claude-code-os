@@ -5,6 +5,8 @@
 // ----------------------------------------------------------------------------
 // 직무(개발직군)·지역·경력·키워드 입력 → PUT /api/me/preferences.
 // 부담 없이: 스킵 가능, 나중에 언제든 수정. 입력은 피드의 초기 필터 프리셋이 된다.
+// + 관심 회사 등록(선택, M2a 조각 ③ — CompanyPicker): 구독은 토글 즉시 서버 저장
+//   (진실 출처 = CompanySubscription). preference 저장 바디와는 무관하다(12.9).
 // ============================================================================
 
 import { useEffect, useState } from "react";
@@ -17,6 +19,7 @@ import {
 } from "@/types/contract";
 import { fetchPreferences, savePreferences } from "@/lib/api";
 import { ErrorState } from "@/components/states";
+import CompanyPicker from "@/components/CompanyPicker";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -235,6 +238,10 @@ export default function OnboardingPage() {
           </div>
         )}
       </section>
+
+      {/* 관심 회사 등록(선택, M2a 조각 ③) — 구독은 토글 즉시 저장되어
+          아래 "저장"과 독립. 아무것도 안 해도 기존 흐름(M1)이 그대로 돈다. */}
+      <CompanyPicker />
 
       {saveError && (
         <p className="formError" role="alert">

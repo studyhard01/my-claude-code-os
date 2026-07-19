@@ -1051,6 +1051,63 @@ a {
   align-items: center;
 }
 
+/* ---- 온보딩 관심 회사(구독) 섹션 (12.9 조각 ③) ---- */
+.companyPicker__note {
+  margin: -0.2rem 0 0.7rem;
+  font-size: 0.8rem;
+  color: var(--text-mute);
+}
+.companyPicker__search {
+  display: flex;
+  gap: 0.5rem;
+}
+.companyPicker__status {
+  margin: 0.55rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.companyPicker__status--error {
+  color: var(--urgent);
+  font-weight: 600;
+}
+.companyPicker__results {
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.companyPicker__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding: 0.55rem 0.8rem;
+}
+.companyPicker__row + .companyPicker__row {
+  border-top: 1px solid var(--border);
+}
+.companyPicker__name {
+  font-weight: 600;
+  font-size: 0.92rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.companyPicker__subscribed {
+  margin-top: 0.9rem;
+}
+.companyPicker__subscribedTitle {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--text-dim);
+}
+.tag--muted {
+  color: var(--text-mute);
+  font-weight: 500;
+}
+
 /* ---- 토스트(북마크 실패 롤백 알림) ---- */
 .toast {
   position: fixed;
