@@ -20,7 +20,8 @@ import {
 describe("roleLabel — 직무 value → 표시 라벨", () => {
   it("계약의 DEV_ROLE_OPTIONS 라벨을 돌려준다", () => {
     expect(roleLabel("backend")).toBe("백엔드 개발");
-    expect(roleLabel("data")).toBe("데이터 엔지니어/ML");
+    expect(roleLabel("data")).toBe("데이터 엔지니어"); // 12.10 라벨 정정
+    expect(roleLabel("ai-ml")).toBe("AI/ML 엔지니어·리서치"); // 12.10 신설
   });
 
   it("모르는 값은 원문 그대로, null 은 null", () => {

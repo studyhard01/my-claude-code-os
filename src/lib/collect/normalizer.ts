@@ -29,18 +29,30 @@ export const TITLE_PLACEHOLDER = "(제목 미확인 공고)";
 /** companyName 누락 시 대체 저장값 (12.8) */
 export const COMPANY_PLACEHOLDER = "(회사 미확인)";
 
-// ---- 직무 라벨 키워드 매핑 (name → DEV_ROLE_OPTIONS.value 7종) ----
+// ---- 직무 라벨 키워드 매핑 (name → DEV_ROLE_OPTIONS.value 10종) ----
 // 순서 = 우선순위. name 에 여러 키워드가 섞이면 먼저 매칭되는 값 채택.
-// (fullstack 을 frontend/backend 보다 앞에 둔다: "풀스택, 웹개발" 같은 복합 name 대비)
+// (fullstack 을 frontend/backend 보다 앞에 둔다: "풀스택, 웹개발" 같은 복합 name 대비.
+//  robotics 를 ai-ml 보다 앞에 둔다: "측위 research scientist"는 robotics — 12.10 표.
+//  ai-ml 을 data 보다 앞에 둔다: ML 계열 키워드의 data → ai-ml 재귀속 — 12.10.)
 //
 // [내부 테이블 — 계약 아님] 소스가 늘 때마다 여기를 보강한다. contract.ts 무관.
 // [2026-07-16 보강 — 카카오 어댑터] 카카오 채용 공고 제목은 직무를 영문으로 쓴다
 //   ("Data Scientist", "Machine Learning Engineer", "LLM Research Engineer").
 //   기존 테이블은 한글 키워드뿐이라 실측 28건 중 6건만 매핑됐다 → 영문 표현을 추가.
 //   [주의] matchKeyword 는 단순 부분문자열(includes) 매칭이라 짧은 토큰은 오탐한다.
-//     예) "ai" 는 email/detail/training/maintenance 안에 들어 있어 추가하면 안 된다.
-//     그래서 "data"/"ml" 단독이 아니라 "data engineer" 처럼 구(phrase)로만 넣는다.
-const ROLE_KEYWORDS: Array<{ value: string; keywords: string[] }> = [
+//     예) "ai" 는 email/detail/training/maintenance 안에 들어 있어 keywords 에 넣으면 안 된다.
+//     구(phrase)로 못 만드는 짧은 토큰("ai"·"qa"·"slam")은 wordKeywords 로 —
+//     ASCII 단어 경계(\b) 정규식 매칭이라 email/aqua 를 오탐하지 않고,
+//     한글 인접("AI엔지니어")은 한글이 \w 밖이라 경계로 인식돼 매칭된다.
+type RoleKeywordEntry = {
+  value: string;
+  /** 부분문자열(includes) 매칭 — 3글자 이상 또는 구(phrase)만 */
+  keywords: string[];
+  /** 단어 경계(\b) 정규식 매칭 — 짧은 영문 토큰 전용 */
+  wordKeywords?: string[];
+};
+
+const ROLE_KEYWORDS: RoleKeywordEntry[] = [
   {
     value: "fullstack",
     keywords: ["풀스택", "fullstack", "full-stack", "full stack"],
@@ -66,29 +78,59 @@ const ROLE_KEYWORDS: Array<{ value: string; keywords: string[] }> = [
   { value: "android", keywords: ["안드로이드", "android"] },
   { value: "ios", keywords: ["ios", "아이폰"] },
   {
+    // [12.10] "측위 research scientist"(카카오모빌리티 실측)는 robotics 로 —
+    //   research scientist 가 ai-ml 에도 있으므로 반드시 ai-ml 보다 앞.
+    value: "robotics",
+    keywords: [
+      "로보틱스",
+      "로봇",
+      "자율주행",
+      "측위",
+      "robotics",
+      "autonomous driving",
+      "self-driving",
+    ],
+    wordKeywords: ["slam"],
+  },
+  {
+    // [12.10] ML 계열 키워드는 data 에서 이동(의도된 재귀속 — 회귀 아님)
+    value: "ai-ml",
+    keywords: [
+      "머신러닝",
+      "딥러닝",
+      "인공지능",
+      "추론 최적화",
+      "machine learning",
+      "deep learning",
+      "ml engineer",
+      "mlops",
+      "llm",
+      "research scientist",
+    ],
+    wordKeywords: ["ai"],
+  },
+  {
     value: "data",
     keywords: [
       "데이터",
-      "머신러닝",
-      "딥러닝",
       "빅데이터",
-      "인공지능",
       // 영문 표현(카카오 등 자체 채용 페이지 계열) — 전부 구 단위로 오탐 방지
       "data engineer",
       "data scientist",
       "data analytics",
       "data analyst",
       "data platform",
-      "machine learning",
-      "deep learning",
-      "ml engineer",
-      "mlops",
-      "llm",
     ],
   },
   {
     value: "devops",
     keywords: ["데브옵스", "devops", "인프라", "클라우드", "sre", "site reliability"],
+  },
+  {
+    // "품질" 단독은 넣지 않는다 — 제조·시설 품질관리(QC)까지 끌어온다(잡알리오 계열 오탐).
+    value: "qa",
+    keywords: ["테스트 엔지니어", "test engineer", "quality assurance", "quality engineer", "품질보증", "sdet"],
+    wordKeywords: ["qa"],
   },
 ];
 
@@ -106,18 +148,20 @@ const LOCATION_KEYWORDS: Array<{ value: string; keywords: string[] }> = [
 ];
 
 function matchKeyword(
-  table: Array<{ value: string; keywords: string[] }>,
+  table: Array<{ value: string; keywords: string[]; wordKeywords?: string[] }>,
   name: string | undefined,
 ): string | null {
   if (!name) return null;
   const lower = name.toLowerCase();
-  for (const { value, keywords } of table) {
+  for (const { value, keywords, wordKeywords } of table) {
     if (keywords.some((k) => lower.includes(k))) return value;
+    // 짧은 영문 토큰("ai"·"qa")은 ASCII 단어 경계로만 — email/aqua 오탐 방지
+    if (wordKeywords?.some((k) => new RegExp(`\\b${k}\\b`).test(lower))) return value;
   }
   return null;
 }
 
-/** job-code.name → jobRole 라벨(7종). 매핑 실패 시 null */
+/** job-code.name → jobRole 라벨(10종). 매핑 실패 시 null */
 export function mapJobRole(name: string | undefined): string | null {
   return matchKeyword(ROLE_KEYWORDS, name);
 }

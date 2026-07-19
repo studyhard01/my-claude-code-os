@@ -250,11 +250,11 @@ describe("KakaoCareersAdapter — fixture 파싱·필드 매핑", () => {
 });
 
 describe("KakaoCareersAdapter → normalizeRawJob 정규화 경로 (파이프라인 고정 규약)", () => {
-  it("fixture 정규화 결과: FULL 3건 + PARTIAL 5건", async () => {
+  it("fixture 정규화 결과: FULL 4건 + PARTIAL 4건 (12.10 확장으로 QA 가 FULL 승격)", async () => {
     const raws = await fixtureAdapter().fetchRaw();
     const outs = raws.map(normalizeRawJob);
-    expect(outs.filter((o) => o.dataQuality === "FULL")).toHaveLength(3);
-    expect(outs.filter((o) => o.dataQuality === "PARTIAL")).toHaveLength(5);
+    expect(outs.filter((o) => o.dataQuality === "FULL")).toHaveLength(4);
+    expect(outs.filter((o) => o.dataQuality === "PARTIAL")).toHaveLength(4);
   });
 
   it("FULL: 영문 직무명 → data 매핑, 판교 → 경기, 제목 경력표기 → EXPERIENCED", async () => {
@@ -276,15 +276,15 @@ describe("KakaoCareersAdapter → normalizeRawJob 정규화 경로 (파이프라
     const out = normalizeRawJob(raws[1]); // LLM Research Engineer (Pre-training) (신입/경력)
 
     expect(out.dataQuality).toBe("FULL");
-    expect(out.jobRole).toBe("data"); // "llm" 키워드
+    expect(out.jobRole).toBe("ai-ml"); // "llm" 키워드 — 12.10 재귀속(data → ai-ml)
     expect(out.experienceLevel).toBe("ANY");
   });
 
-  it("FULL: 'Machine Learning' 영문 표기도 data 로 매핑된다", async () => {
+  it("FULL: 'Machine Learning' 영문 표기는 ai-ml 로 매핑된다 (12.10 재귀속)", async () => {
     const raws = await fixtureAdapter().fetchRaw();
     const out = normalizeRawJob(raws[2]);
     expect(out.dataQuality).toBe("FULL");
-    expect(out.jobRole).toBe("data");
+    expect(out.jobRole).toBe("ai-ml");
   });
 
   it("PARTIAL: 공동체 공고는 지역·경력이 응답에 없어 PARTIAL (직무는 붙는다)", async () => {
@@ -299,13 +299,13 @@ describe("KakaoCareersAdapter → normalizeRawJob 정규화 경로 (파이프라
     expect(out.dedupKey).toBe("카카오페이|backend|");
   });
 
-  it("PARTIAL: 7개 개발직군 밖(QA)은 jobRole null", async () => {
+  it("FULL: QA 는 카탈로그 확장(12.10)으로 qa 매핑 — 이전엔 jobRole null·PARTIAL 이었다", async () => {
     const raws = await fixtureAdapter().fetchRaw();
     const out = normalizeRawJob(raws[5]); // 서비스/플랫폼 QA 담당자 (경력)
 
-    expect(out.dataQuality).toBe("PARTIAL");
-    expect(out.jobRole).toBeNull();
-    expect(out.location).toBe("경기"); // 나머지 필드는 유지
+    expect(out.dataQuality).toBe("FULL");
+    expect(out.jobRole).toBe("qa");
+    expect(out.location).toBe("경기");
     expect(out.experienceLevel).toBe("EXPERIENCED");
   });
 
