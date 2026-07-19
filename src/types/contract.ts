@@ -161,9 +161,11 @@ export interface JobsQuery {
   cursor?: string;
 }
 
-// ---- M1 개발직군 직무 카탈로그 (온보딩/필터 선택지) ----
+// ---- 개발직군 직무 카탈로그 (온보딩/필터 선택지) ----
 //
-// 11장 결정: M1 은 개발직군 한정. 프론트 온보딩·필터의 role 선택지로 사용.
+// 11장 결정: 개발직군 한정(비개발 직군은 M3+, 해당 공고는 role=unassigned 구획으로 도달).
+// [2026-07-17 M2 확장 — 12.10] 7→10종: ai-ml·robotics·qa 추가, data 라벨 정정
+//   (카카오 라이브 미매핑 14/28 실측 — "카탈로그에 자리 없음"이 원인).
 // 값(value)은 Job.jobRole 에 그대로 저장/필터되는 라벨.
 // [주의] 사람인 job_cd ↔ 라벨 실매핑은 SaraminAdapter 실연동(승인 후) 시 확정한다.
 //   지금 code 는 placeholder 이며, 프론트는 value/label 만 사용하면 된다.
@@ -183,7 +185,10 @@ export const DEV_ROLE_OPTIONS: DevRoleOption[] = [
   { code: "TBD-fs", value: "fullstack", label: "풀스택 개발" },
   { code: "TBD-and", value: "android", label: "안드로이드 개발" },
   { code: "TBD-ios", value: "ios", label: "iOS 개발" },
-  { code: "TBD-data", value: "data", label: "데이터 엔지니어/ML" },
+  { code: "TBD-data", value: "data", label: "데이터 엔지니어" },
+  { code: "TBD-aiml", value: "ai-ml", label: "AI/ML 엔지니어·리서치" },
+  { code: "TBD-robotics", value: "robotics", label: "로보틱스/자율주행" },
+  { code: "TBD-qa", value: "qa", label: "QA/테스트 엔지니어" },
   { code: "TBD-devops", value: "devops", label: "DevOps/인프라" },
 ];
 

@@ -29,6 +29,37 @@ describe("mapJobRole — job-code.name 키워드 → 직무 라벨", () => {
     expect(mapJobRole("프론트엔드, 풀스택")).toBe("fullstack");
   });
 
+  it("[12.10 확장] ai-ml — ML 계열 키워드는 data 가 아니라 ai-ml (의도된 재귀속)", () => {
+    expect(mapJobRole("Machine Learning Engineer")).toBe("ai-ml");
+    expect(mapJobRole("LLM Research Engineer")).toBe("ai-ml");
+    expect(mapJobRole("머신러닝 엔지니어")).toBe("ai-ml");
+    expect(mapJobRole("AI Platform 추론 최적화")).toBe("ai-ml"); // 카카오 미매핑 실측 건
+    expect(mapJobRole("AI엔지니어")).toBe("ai-ml"); // 한글 인접도 단어 경계로 인식
+  });
+
+  it("[12.10 확장] data 는 데이터 엔지니어 계열만 남는다", () => {
+    expect(mapJobRole("Data Scientist")).toBe("data");
+    expect(mapJobRole("빅데이터 플랫폼 개발")).toBe("data");
+  });
+
+  it("[12.10 확장] robotics — 측위/SLAM 은 research scientist 보다 우선한다", () => {
+    expect(mapJobRole("자율주행 SLAM 엔지니어")).toBe("robotics");
+    expect(mapJobRole("측위 Research Scientist")).toBe("robotics"); // 카카오모빌리티 실측 건
+    expect(mapJobRole("로봇 제어 개발자")).toBe("robotics");
+  });
+
+  it("[12.10 확장] qa — QA/테스트 엔지니어 매핑", () => {
+    expect(mapJobRole("서비스/플랫폼 QA 담당자")).toBe("qa");
+    expect(mapJobRole("테스트 엔지니어(SDET)")).toBe("qa");
+  });
+
+  it("[12.10 오탐 방지] 짧은 토큰(ai·qa)은 단어 경계 밖이면 매칭하지 않는다", () => {
+    expect(mapJobRole("Email Marketing Specialist")).toBeNull(); // email 안의 ai
+    expect(mapJobRole("Training Coordinator")).toBeNull(); // training 안의 ai
+    expect(mapJobRole("Maintenance Technician")).toBeNull(); // maintenance 안의 ai
+    expect(mapJobRole("Qatar Office Manager")).toBeNull(); // qatar 안의 qa
+  });
+
   it("매핑 실패·입력 없음 → null", () => {
     expect(mapJobRole("영업관리")).toBeNull();
     expect(mapJobRole(undefined)).toBeNull();
