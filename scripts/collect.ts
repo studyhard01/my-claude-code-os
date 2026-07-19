@@ -22,6 +22,15 @@
 //
 // upsert 는 (source, sourceJobId) UNIQUE 키 기준 → 재실행 시 중복 생성 없음(idempotent).
 // 날짜: Normalizer 는 ISO "문자열"을 반환하고, Date 변환은 여기(수집 진입점) 책임(12.8).
+//
+// [M2 위생 — 2026-07-19] 이미 마감 지난 공고는 upsert 전에 거른다(만료 스킵).
+//   경계는 피드와 동일(src/lib/collect/expiry.ts 참조). 잡알리오 라이브 실측
+//   (500건 중 마감 전 61건)이 근거 — 만료 공고가 DB 만 불리고 피드엔 안 보인다.
+//   이미 DB 에 있는 공고가 만료 후 재수집되면 갱신도 스킵된다(피드가 어차피
+//   숨기므로 낡은 채 남아도 무해, 삭제는 하지 않는다).
+//   COLLECT_NOW(ISO) 로 판정 기준 시각을 주입할 수 있다 — 테스트가 fixture
+//   채집 시점으로 시간을 고정해 "달력이 넘어가면 저절로 깨지는 테스트"(평가
+//   게이트 C3 사고와 같은 유형)를 막기 위한 것. 실행 시엔 지정하지 않는다.
 // ============================================================================
 
 import { readFileSync } from "node:fs";
@@ -32,6 +41,7 @@ import { SaraminAdapter } from "../src/lib/collect/saramin-adapter";
 import { AlioAdapter } from "../src/lib/collect/alio-adapter";
 import { KakaoCareersAdapter } from "../src/lib/collect/kakao-adapter";
 import { normalizeRawJob } from "../src/lib/collect/normalizer";
+import { isExpiredDeadline } from "../src/lib/collect/expiry";
 
 const prisma = new PrismaClient();
 
@@ -113,9 +123,21 @@ function buildAdapter(): SourceAdapter {
   }
 }
 
+/** 만료 판정 기준 시각. COLLECT_NOW 가 있으면 그 시각(잘못된 값은 즉시 실패 — 조용한 폴백 금지) */
+function resolveNow(): Date {
+  const raw = process.env.COLLECT_NOW;
+  if (!raw) return new Date();
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error(`[collect] COLLECT_NOW 를 해석할 수 없습니다: "${raw}" (ISO 형식 필요)`);
+  }
+  return d;
+}
+
 async function main() {
   const mode = process.env.COLLECT_SOURCE ?? "mock";
   const adapter = buildAdapter();
+  const now = resolveNow();
 
   console.log(`[collect] mode=${mode} source=${adapter.source} 수집 시작`);
   const raws = await adapter.fetchRaw();
@@ -125,9 +147,17 @@ async function main() {
   let partial = 0;
   let created = 0;
   let updated = 0;
+  let expiredSkipped = 0;
 
   for (const raw of raws) {
     const input = normalizeRawJob(raw);
+
+    // 만료 스킵(M2 위생) — 마감 지난 공고는 적재도 갱신도 하지 않는다.
+    if (isExpiredDeadline(input.deadline, now)) {
+      expiredSkipped += 1;
+      continue;
+    }
+
     if (input.dataQuality === "PARTIAL") partial += 1;
     else full += 1;
 
@@ -172,7 +202,7 @@ async function main() {
   const dbTotal = await prisma.job.count();
   console.log(
     `[collect] 완료 — 수집 ${raws.length}건 (FULL ${full} / PARTIAL ${partial}) · ` +
-      `신규 ${created} / 갱신 ${updated} · DB Job 총 ${dbTotal}건`,
+      `만료 스킵 ${expiredSkipped} · 신규 ${created} / 갱신 ${updated} · DB Job 총 ${dbTotal}건`,
   );
 }
 
