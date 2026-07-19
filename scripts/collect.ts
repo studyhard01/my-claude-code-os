@@ -40,7 +40,11 @@ import { MockAdapter, type SourceAdapter } from "../src/lib/collect/source-adapt
 import { SaraminAdapter } from "../src/lib/collect/saramin-adapter";
 import { AlioAdapter } from "../src/lib/collect/alio-adapter";
 import { KakaoCareersAdapter } from "../src/lib/collect/kakao-adapter";
-import { normalizeRawJob } from "../src/lib/collect/normalizer";
+import {
+  COMPANY_PLACEHOLDER,
+  normalizeCompanyName,
+  normalizeRawJob,
+} from "../src/lib/collect/normalizer";
 import { isExpiredDeadline } from "../src/lib/collect/expiry";
 
 const prisma = new PrismaClient();
@@ -123,6 +127,31 @@ function buildAdapter(): SourceAdapter {
   }
 }
 
+/**
+ * 회사-공고 연결(12.9 조각 ①): companyName → normName → Company id.
+ * - 없으면 생성(name = 최초 관측 원문 유지, 이후 덮어쓰지 않음 — 12.9)
+ * - placeholder "(회사 미확인)" 는 null (연결 금지)
+ * - 실행 내 캐시로 같은 회사 반복 조회를 줄인다(잡알리오 500건 규모)
+ */
+const companyIdCache = new Map<string, string>();
+async function resolveCompanyId(companyName: string): Promise<string | null> {
+  if (companyName === COMPANY_PLACEHOLDER) return null;
+  const normName = normalizeCompanyName(companyName);
+  if (!normName) return null; // 정규화 후 빈 문자열(이론상)도 연결하지 않는다
+
+  const cached = companyIdCache.get(normName);
+  if (cached) return cached;
+
+  const company = await prisma.company.upsert({
+    where: { normName },
+    update: {}, // name 은 최초 관측 원문 유지(12.9) — 갱신하지 않는다
+    create: { name: companyName, normName },
+    select: { id: true },
+  });
+  companyIdCache.set(normName, company.id);
+  return company.id;
+}
+
 /** 만료 판정 기준 시각. COLLECT_NOW 가 있으면 그 시각(잘못된 값은 즉시 실패 — 조용한 폴백 금지) */
 function resolveNow(): Date {
   const raw = process.env.COLLECT_NOW;
@@ -161,8 +190,13 @@ async function main() {
     if (input.dataQuality === "PARTIAL") partial += 1;
     else full += 1;
 
+    // 회사-공고 연결(12.9 조각 ①): normName 으로 Company 를 찾거나 만들어 companyId 를 채운다.
+    // placeholder "(회사 미확인)" 는 연결하지 않는다(가짜 회사 엔티티 방지 — companyId null 유지).
+    const companyId = await resolveCompanyId(input.companyName);
+
     // ISO 문자열 → Date 변환은 수집 진입점 책임(12.8). collectedAt 은 재수집 시각으로 갱신.
     const data = {
+      companyId,
       url: input.url,
       title: input.title,
       companyName: input.companyName,
@@ -202,7 +236,8 @@ async function main() {
   const dbTotal = await prisma.job.count();
   console.log(
     `[collect] 완료 — 수집 ${raws.length}건 (FULL ${full} / PARTIAL ${partial}) · ` +
-      `만료 스킵 ${expiredSkipped} · 신규 ${created} / 갱신 ${updated} · DB Job 총 ${dbTotal}건`,
+      `만료 스킵 ${expiredSkipped} · 신규 ${created} / 갱신 ${updated} · ` +
+      `회사 연결 ${companyIdCache.size}곳 · DB Job 총 ${dbTotal}건`,
   );
 }
 

@@ -32,7 +32,7 @@ export interface Job {
   url: string;
   title: string;
   companyName: string;
-  /** M2 회사 리서치 연결용. M1 은 항상 null */
+  /** 회사 연결(12.9 조각 ①). placeholder "(회사 미확인)" 공고만 null */
   companyId: string | null;
   /** 직무 분류(코드→라벨). M1 개발직군 한정 */
   jobRole: string | null;
@@ -74,6 +74,28 @@ export type JobDTO = Job & {
   /** null = 미저장 */
   bookmark: { bookmarkId: string; status: BookmarkStatus } | null;
 };
+
+/**
+ * 회사 엔티티 (OS.md 12.9 — 2026-07-19 확정, M2a 조각 ①).
+ * 동일성 키 = normName(12.8(3) normCompany 규칙 재사용 — normalizeCompanyName 단일 출처).
+ */
+export interface Company {
+  id: string;
+  /** 대표 표기명 — 최초 관측된 companyName 원문(재수집 시 덮어쓰지 않음) */
+  name: string;
+  /** 회사 동일성 키. UNIQUE */
+  normName: string;
+  /** 공식 채용 페이지 URL — M3 ATS 수집 대상. 조각 ①에선 항상 null */
+  careersPageUrl: string | null;
+  createdAt: string;
+}
+
+/** 사용자↔회사 구독 (OS.md 12.9). 회사당 1개. 구현은 M2a 조각 ② */
+export interface CompanySubscription {
+  id: string;
+  companyId: string;
+  createdAt: string;
+}
 
 /** 사용자 조건 (OS.md 12.3). M1 단일 로컬 사용자 1행 */
 export interface UserPreference {
@@ -158,6 +180,8 @@ export interface JobsQuery {
   deadlineWithin?: number;
   /** 마감 지난 공고 포함 여부. 기본 false */
   includeExpired?: boolean;
+  /** 구독한 회사의 공고만 (12.9 확정). 서버는 "true" 만 참. 구현은 M2a 조각 ② */
+  subscribedOnly?: boolean;
   cursor?: string;
 }
 

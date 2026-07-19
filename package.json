@@ -14,6 +14,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "db:backfill-companies": "tsx scripts/backfill-companies.ts",
     "collect": "tsx scripts/collect.ts"
   },
   "prisma": {
