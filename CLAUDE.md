@@ -38,6 +38,7 @@ npm run test       # vitest — tests/ 아래 단위 테스트 (ralph-test 루�
 npm run eval       # push 게이트 평가 — rubric 은 docs/eval-rubric.md, 100점일 때만 push
 ```
 
+- **이 저장소의 실질 main = `studyhard01` 브랜치다.** 스터디 공유 저장소라 default branch `main` 은 공용(참가자별 브랜치 병렬 존재). 새 브랜치 분기·PR base·병합 후 복귀는 전부 `studyhard01` 로 하고, `main` 에는 checkout·push 하지 않는다 (2026-07-19 실측 — main 을 열었다가 병합 실패로 오인).
 - **push 는 `/ship` 으로만 한다** — `npm run eval`(rubric 11항목: 정적 검증·기동·기능 API 왕복·응답 시간) 전 항목 통과 시에만 push (2026-07-14 결정, 병목 ① push 부분 해소). 손으로 `git push` 하지 말 것.
 - **force push 금지** — 여러 세션이 같은 브랜치를 쓴다. 원격 이력 강제 덮어쓰기가 이틀 연속(07-13·07-14) 다른 세션과의 갈라짐 사고를 냈다. 브랜치 재구성이 필요하면 **PR 병합으로만** (2026-07-14 합의). 갈라짐을 만나면 `git cherry` 로 "서로 뭘 갖고 있나"부터 확인(LESSONS.md).
 - **검증은 `npm run typecheck` + `npm run test` 로 한다.** 계약(`contract.ts`)이 `strict` 로 검사되므로, `deadline`/`description` 의 `null` 미처리나 `JobDTO` 필드 오사용을 typecheck 에서 잡는다. 테스트는 `/ralph-test` 루프(진행 상태 = `.claude/ralph-test-progress.md`)가 모듈별로 채운다. (2026-07-09 기준 둘 다 통과)
