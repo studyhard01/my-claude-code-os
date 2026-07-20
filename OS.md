@@ -416,6 +416,9 @@ type JobDTO = Job & {
 - `POST /api/subscriptions { companyId }` — 구독 생성(idempotent — 이미 있으면 기존 반환), `DELETE /api/subscriptions/:id`, `GET /api/subscriptions` — 구독 목록(= M3 회사 채용 페이지 수집 대상 목록, 9장).
 - **피드 필터 축(확정)**: `GET /api/jobs?subscribedOnly=true` — **구독한 회사의 공고만**. `"true"` 외 값·부재 = false. companyId null 공고는 제외되며 이는 이름 그대로의 동작이다(12.5 `partialOnly` 기각 때의 "이름이 거짓말하면 기각" 기준 통과). 다른 필터 축과 AND 결합, 12.6 정렬·집계 규약 그대로 적용.
 
+**알려진 한계 (2026-07-19, 조각 ③ frontend 이견 — M2b 계약 확정 시 해소)**
+- `GET /api/subscriptions` 에 회사명이 없고 `GET /api/companies` 는 limit 상한 100(회사 184곳) — 구독 회사 **이름** 해석이 완전 보장되지 않는다(프론트는 "이름을 못 불러온 회사 N곳" 폴백). M2b(구독 관리·리서치 진입)에서 재발하므로, M2b 계약 확정 Draft PR 때 **subscriptions 응답에 회사 join** vs **`GET /api/companies?ids=` 추가** 중 택일한다.
+
 **조각 ① 완료 기준(측정 지점 명시)**
 1. 수집 시 신규/갱신 Job 에 companyId 가 채워진다(placeholder 제외) — fixture 와 라이브 실측.
 2. backfill 후 companyId 보유율 실측 보고, Company 행 수 = distinct normName 수, 재실행 시 신규 0.

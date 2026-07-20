@@ -37,6 +37,8 @@ interface SubscriptionContextValue {
   ready: boolean;
   /** 구독한 회사 수 — 피드 "구독 회사만" 빈 상태 분기의 근거 */
   count: number;
+  /** 구독 중인 companyId 목록 — 온보딩 "구독 중인 회사" 표시 근거(조각 ③) */
+  companyIds: string[];
   isSubscribed: (companyId: string) => boolean;
   /** 처리 중(중복 클릭 방지 → 버튼 disable) */
   isPending: (companyId: string) => boolean;
@@ -149,6 +151,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const value: SubscriptionContextValue = {
     ready,
     count: Object.keys(map).length,
+    companyIds: Object.keys(map),
     isSubscribed: (companyId) => Boolean(map[companyId]),
     isPending: (companyId) => Boolean(pending[companyId]),
     toggle,
