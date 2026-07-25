@@ -153,18 +153,24 @@ export default function JobDetailPage({
         </div>
       </header>
 
-      {/* 회사 리서치 진입점 — M2 placeholder */}
-      <section className="researchCta">
-        <div>
-          <strong>이 회사 리서치 보기</strong>
-          <p className="researchCta__desc">
-            공시 요약 · 인재상 · 자소서 관점 정리 (M2에서 제공 예정)
-          </p>
-        </div>
-        <button type="button" className="btn btn--outline" disabled>
-          곧 제공돼요
-        </button>
-      </section>
+      {/* 회사 리서치 진입점 (OS.md 12.11) — companyId 있는 공고만. null 이면 미노출
+          (회사 미확인 공고. 상단 구독 버튼 미노출과 대칭). */}
+      {job.companyId && (
+        <section className="researchCta">
+          <div>
+            <strong>이 회사 리서치 보기</strong>
+            <p className="researchCta__desc">
+              공시 요약 · 인재상 · 자소서 관점 + 나만의 리서치 노트
+            </p>
+          </div>
+          <Link
+            href={`/companies/${job.companyId}`}
+            className="btn btn--primary"
+          >
+            리서치 열기 →
+          </Link>
+        </section>
+      )}
 
       {/* 직무 요건 — description null 이면 URL 폴백을 1급으로 */}
       <section className="detail__section">

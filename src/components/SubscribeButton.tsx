@@ -38,7 +38,8 @@ export default function SubscribeButton({
         // 카드 전체 링크(stretched link) 클릭으로 전파되지 않게 막는다.
         e.preventDefault();
         e.stopPropagation();
-        toggle(companyId);
+        // 회사 이름 힌트를 함께 넘겨 낙관적 구독 태그가 즉시 이름으로 보이게 한다.
+        toggle(companyId, { name: companyName });
       }}
     >
       <span aria-hidden="true">{on ? "✓" : "+"}</span>
