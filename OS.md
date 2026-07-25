@@ -416,8 +416,8 @@ type JobDTO = Job & {
 - `POST /api/subscriptions { companyId }` — 구독 생성(idempotent — 이미 있으면 기존 반환), `DELETE /api/subscriptions/:id`, `GET /api/subscriptions` — 구독 목록(= M3 회사 채용 페이지 수집 대상 목록, 9장).
 - **피드 필터 축(확정)**: `GET /api/jobs?subscribedOnly=true` — **구독한 회사의 공고만**. `"true"` 외 값·부재 = false. companyId null 공고는 제외되며 이는 이름 그대로의 동작이다(12.5 `partialOnly` 기각 때의 "이름이 거짓말하면 기각" 기준 통과). 다른 필터 축과 AND 결합, 12.6 정렬·집계 규약 그대로 적용.
 
-**알려진 한계 (2026-07-19, 조각 ③ frontend 이견 — M2b 계약 확정 시 해소)**
-- `GET /api/subscriptions` 에 회사명이 없고 `GET /api/companies` 는 limit 상한 100(회사 184곳) — 구독 회사 **이름** 해석이 완전 보장되지 않는다(프론트는 "이름을 못 불러온 회사 N곳" 폴백). M2b(구독 관리·리서치 진입)에서 재발하므로, M2b 계약 확정 Draft PR 때 **subscriptions 응답에 회사 join** vs **`GET /api/companies?ids=` 추가** 중 택일한다.
+**알려진 한계 (2026-07-19 제기 → 2026-07-25 해소)**
+- (증상) `GET /api/subscriptions` 에 회사명이 없고 `GET /api/companies` 는 limit 상한 100(회사 184곳) — 구독 회사 **이름** 해석이 완전 보장되지 않았다(프론트 "이름을 못 불러온 회사 N곳" 폴백). **해소: 12.11 에서 `GET /api/subscriptions` 응답에 회사 메타 join 채택**(`companies?ids=` 대신 — 구독 목록이 리서치 진입 구조가 되어 항상 회사 메타를 필요로 하므로).
 
 **조각 ① 완료 기준(측정 지점 명시)**
 1. 수집 시 신규/갱신 Job 에 companyId 가 채워진다(placeholder 제외) — fixture 와 라이브 실측.
@@ -446,3 +446,34 @@ type JobDTO = Job & {
   2. 신규 role 각각 `GET /api/jobs?role=...` 1건 이상 반환(수집 시점 실데이터 기준. 실데이터가 없는 role 은 fixture 단위 테스트로 갈음하고 완료 기준에서 해당 role 만 제외 — 그 사실을 기록).
   3. `npm run typecheck`·`npm run test`·`npm run eval` 100 유지(평가 C3 는 카탈로그를 자동 순회하므로 스크립트 변경 불필요 — 실측 확인 2026-07-17).
   4. **프론트 코드 변경 없음**(온보딩·필터 UI 는 `DEV_ROLE_OPTIONS` 자동 반영) — 단 칩 10개 렌더·레이아웃 스모크 확인 1건.
+
+### 12.11 M2b 계약 — 회사 리서치 조각 1 (2026-07-25 확정, 리서치 화면 + 노트)
+
+> **범위 결정(2026-07-25 사용자 — "등뼈 먼저").** M2b(5.2·6장·9장)는 외부 의존(DART 공시 API·회사별 인재상 크롤링·LLM 요약)이 한꺼번에 얽혀 **실측 전엔 되는지 모른다**(잡알리오 0.8% FULL·워크넷 개인 발급 불가 실측 계열). 그래서 **우리가 통제하는 등뼈(리서치 화면 진입 + 노트 + 원문 폴백)를 먼저 확정·구현**하고, 외부 소스는 실측 게이트 뒤에 조각별로 얹는다(M2a-① 에서 검증된 순서). 이 절은 **조각 1만** 확정한다.
+
+**ResearchNote (신규 모델)** — 회사 단위(job 단위 `Bookmark.memo`(12.3)와 별개)
+| 필드 | 타입 | 비고 |
+|---|---|---|
+| id | string | cuid |
+| companyId | string | Company FK, onDelete Cascade, **UNIQUE**(회사당 노트 1개 — Bookmark 의 jobId UNIQUE 패턴. 다건·타임스탬프 이력은 M3) |
+| content | string | 노트 본문 |
+| createdAt / updatedAt | string(ISO) | |
+
+**API (조각 1)**
+- `GET /api/companies/:id/research` — 리서치 aggregate: 회사 메타 + 노트(없으면 null) + **외부 데이터 슬롯**(공시·인재상은 비워 두고 조각 2·3 에서 채움 — 그전엔 프론트가 "준비 중 · 원문에서 확인" 폴백 + `careersPageUrl`/공고 원문 출처 링크로 정직하게 표시). 없는 회사 404 `COMPANY_NOT_FOUND`(12.5).
+- `PUT /api/companies/:id/research/note { content }` — 노트 upsert(idempotent). **빈 content = 노트 삭제**. `DELETE /api/companies/:id/research/note` 동일 효과.
+- **12.9 알려진 한계 해소**: `GET /api/subscriptions` 응답 항목에 회사 메타(id·name·normName·careersPageUrl) **join**. 구독 목록이 리서치 진입 구조가 되므로 이름·링크를 1왕복으로 얻는다(`companies?ids=` 대신 join 채택).
+
+**진입 구조 (5.2·6장)**
+- ① 구독 회사 목록 → 회사 리서치 화면. ② 공고 상세의 "이 회사 리서치 보기" placeholder 실체화 — `companyId` 있는 공고만(null 이면 진입점 미노출, 12.9 조각 ① 동작과 대칭).
+
+**조각 1 완료 기준(측정 지점 명시)**
+1. 구독 목록 → 리서치 화면 진입 → 노트 작성·저장 → 재진입 시 내용 유지(실왕복).
+2. 공고 상세 진입점 → 같은 회사 리서치 화면(companyId null 공고는 진입점 미노출).
+3. 외부 데이터 슬롯은 "준비 중/원문에서 확인" 폴백으로 표시(**빈 화면 금지** — 행복경로만 = 미완성).
+4. `GET /api/subscriptions` 가 회사 메타를 포함해 프론트 폴백("이름 못 불러온 회사 N곳")이 사라진다.
+5. `npm run typecheck`·`test`·`eval` 100 유지, 기존 API 응답 형태 무변경(subscriptions join 은 필드 추가라 기존 소비 코드 무영향).
+
+**조각 2·3 실측 게이트(착수 시 별도 절 12.11(2)/(3) 로 확정 — 지금 미확정)**
+- 조각 2 (DART 공시 요약): DART OpenAPI 키 발급(자동, 잡알리오 계열) → `corpCode.xml` 다운로드 → `Company.normName` ↔ corp_code **매핑률 실측**(공시대상 = 상장사 + 외감법인이라 카카오모빌리티·공공기관 상당수 미포함 가능 → 낮으면 정직히 표시하고 범위 조정). 그다음 기업개황·재무·최근 공시 요약.
+- 조각 3 (인재상 + LLM 자소서 관점): Claude API(최신 모델 — claude-api 스킬) 키 + 인재상 소스(카카오 careers 어댑터 재사용 + URL 폴백). 회사별 HTML 취약 → 커버 안 되는 회사는 URL 폴백, 일부 M3 이월 가능.
