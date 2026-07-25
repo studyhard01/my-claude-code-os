@@ -25,6 +25,8 @@ import type {
   CompaniesListResponse,
   SubscriptionsListResponse,
   CreateSubscriptionResponse,
+  CompanyResearchResponse,
+  ResearchNoteResponse,
 } from "@/types/contract";
 import {
   DEV_ROLE_OPTIONS,
@@ -269,7 +271,12 @@ export async function fetchCompanies(
   return parse<CompaniesListResponse>(res);
 }
 
-/** GET /api/subscriptions — 구독 목록(최신 구독순). 회사명은 포함되지 않는다. */
+/**
+ * GET /api/subscriptions — 구독 목록(최신 구독순).
+ * 각 항목에 회사 메타(id·name·normName·careersPageUrl)가 join 돼 온다(OS.md 12.11).
+ * → 구독 목록이 곧 회사 리서치 진입 구조. 이름·채용페이지 링크를 1왕복으로 얻으므로
+ *   더 이상 회사 목록을 별도로 시드 로드해 이름을 해석할 필요가 없다.
+ */
 export async function fetchSubscriptions(
   signal?: AbortSignal
 ): Promise<SubscriptionsListResponse> {
@@ -296,4 +303,49 @@ export async function deleteSubscription(subscriptionId: string): Promise<void> 
     { method: "DELETE" }
   );
   await parseNoContent(res, "구독 해제에 실패했어요");
+}
+
+// ---- 회사 리서치 (OS.md 12.11, M2b 조각 1) --------------------------------
+// 리서치 화면의 데이터 접근 단일 창구. 회사 메타 + 노트 + 외부 데이터 슬롯 상태를
+// 한 번에 받고(GET), 노트는 upsert(PUT) — 빈 content 는 삭제와 동일 효과(계약).
+// 외부 데이터(공시·인재상)는 조각 2·3 에서 채운다(지금 researchStatus 는 항상 PENDING).
+
+/** GET /api/companies/:id/research — 리서치 aggregate. 없는 회사 → 404 COMPANY_NOT_FOUND. */
+export async function fetchCompanyResearch(
+  companyId: string,
+  signal?: AbortSignal
+): Promise<CompanyResearchResponse> {
+  const res = await fetch(
+    `/api/companies/${encodeURIComponent(companyId)}/research`,
+    { cache: "no-store", signal }
+  );
+  return parse<CompanyResearchResponse>(res);
+}
+
+/**
+ * PUT /api/companies/:id/research/note — 노트 upsert(idempotent).
+ * 빈/공백 content 를 보내면 노트 삭제 → 응답 { note: null }.
+ */
+export async function upsertResearchNote(
+  companyId: string,
+  content: string
+): Promise<ResearchNoteResponse> {
+  const res = await fetch(
+    `/api/companies/${encodeURIComponent(companyId)}/research/note`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    }
+  );
+  return parse<ResearchNoteResponse>(res);
+}
+
+/** DELETE /api/companies/:id/research/note — 노트 삭제(204, 멱등). */
+export async function deleteResearchNote(companyId: string): Promise<void> {
+  const res = await fetch(
+    `/api/companies/${encodeURIComponent(companyId)}/research/note`,
+    { method: "DELETE" }
+  );
+  await parseNoContent(res, "노트 삭제에 실패했어요");
 }

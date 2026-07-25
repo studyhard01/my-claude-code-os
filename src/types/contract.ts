@@ -97,6 +97,26 @@ export interface CompanySubscription {
   createdAt: string;
 }
 
+/**
+ * 회사 리서치 노트 (OS.md 12.11 — M2b 조각 1). 회사 단위.
+ * job 단위 Bookmark.memo(12.3)와 별개 — "회사"에 대한 리서치 기록. 회사당 1개.
+ */
+export interface ResearchNote {
+  id: string;
+  companyId: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * 리서치 화면 외부 데이터(공시·인재상) 슬롯의 준비 상태 (OS.md 12.11).
+ * 조각 1 에선 항상 "PENDING" — 프론트는 "준비 중 · 원문에서 확인" 폴백 +
+ * company.careersPageUrl/공고 원문 링크로 정직하게 표시(빈 화면 금지).
+ * 조각 2·3 에서 실데이터가 붙으면 "READY" 로 전환한다(그때 실데이터 필드 추가).
+ */
+export type ResearchStatus = "PENDING" | "READY";
+
 /** 사용자 조건 (OS.md 12.3). M1 단일 로컬 사용자 1행 */
 export interface UserPreference {
   roles: string[];
@@ -167,12 +187,26 @@ export interface CompaniesListResponse {
 }
 
 /**
+ * 구독 항목 + 회사 메타 join (OS.md 12.11 — 12.9 "이름 못 불러온 회사 N곳" 폴백 해소).
+ * CompanySubscription 을 확장(필드 추가)하므로 id/companyId/createdAt 만 읽던
+ * 기존 소비 코드는 그대로 동작한다. company 는 리서치 진입·표기·링크의 1왕복 근거.
+ */
+export type SubscriptionWithCompany = CompanySubscription & {
+  company: {
+    id: string;
+    name: string;
+    normName: string;
+    careersPageUrl: string | null;
+  };
+};
+
+/**
  * GET /api/subscriptions 응답 (최신 구독순).
- * 카드/상세의 구독 상태는 프론트가 items 를 companyId 로 매칭해 판단한다
- * (JobDTO 에 구독 필드를 추가하지 않음 — 12.9 계약 범위 밖).
+ * 각 항목에 회사 메타를 join 해 돌려준다(12.11) — 구독 목록이 회사 리서치 진입
+ * 구조이므로 이름·채용페이지 링크를 한 번의 요청으로 얻는다.
  */
 export interface SubscriptionsListResponse {
-  items: CompanySubscription[];
+  items: SubscriptionWithCompany[];
 }
 
 /** POST /api/subscriptions 요청 바디 */
@@ -185,6 +219,35 @@ export interface CreateSubscriptionBody {
  * idempotent — 이미 구독 중이면 기존 구독을 그대로 반환(Bookmark POST 패턴).
  */
 export type CreateSubscriptionResponse = CompanySubscription;
+
+// ---- 회사 리서치 API (OS.md 12.11 — M2b 조각 1) ----
+
+/**
+ * GET /api/companies/:id/research 응답 — 리서치 aggregate.
+ * 회사 메타 + 노트(없으면 null) + 외부 데이터 슬롯 상태.
+ * 없는 회사 → 404 COMPANY_NOT_FOUND (12.5).
+ * 외부 데이터(공시·인재상)는 조각 2·3 에서 채운다 — 조각 1 에선 researchStatus="PENDING"
+ * 만 오고, 프론트는 company.careersPageUrl/공고 원문 링크로 폴백한다.
+ */
+export interface CompanyResearchResponse {
+  company: Company;
+  note: ResearchNote | null;
+  /** 외부 데이터 슬롯 준비 상태. 조각 1 에선 항상 "PENDING" */
+  researchStatus: ResearchStatus;
+}
+
+/** PUT /api/companies/:id/research/note 요청 바디. 빈/공백 content = 노트 삭제 */
+export interface UpsertResearchNoteBody {
+  content: string;
+}
+
+/**
+ * PUT /api/companies/:id/research/note 응답.
+ * upsert 결과 노트를 돌려준다. 빈 content 로 삭제한 경우 note: null (idempotent).
+ */
+export interface ResearchNoteResponse {
+  note: ResearchNote | null;
+}
 
 /** 표준 에러 형태 (OS.md 12.5). HTTP status 와 함께 전달. 빈 결과는 에러 아님(items: []) */
 export interface ApiError {

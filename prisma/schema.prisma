@@ -29,6 +29,22 @@ model Company {
 
   jobs          Job[]
   subscriptions CompanySubscription[]
+  researchNote  ResearchNote?
+}
+
+/// 회사 리서치 노트 (OS.md 12.11 — M2b 조각 1). 회사 단위 메모.
+/// job 단위 Bookmark.memo(12.3)와 별개다 — 여기는 "회사"에 대한 리서치 기록.
+/// 회사당 노트 1개(@@unique([companyId]) — Bookmark 의 jobId UNIQUE 패턴, PUT idempotent 근거).
+/// 다건·타임스탬프 이력은 M3. Company 삭제 시 함께 삭제(onDelete Cascade).
+model ResearchNote {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId])
 }
 
 /// 사용자↔회사 구독 (OS.md 12.9 — M2a 조각 ②). M1 과 같은 단일 로컬 사용자 전제 →
