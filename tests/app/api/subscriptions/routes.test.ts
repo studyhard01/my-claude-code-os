@@ -100,6 +100,11 @@ describe("GET·DELETE /api/subscriptions — 목록·해제 왕복", () => {
     const list = (await listRes.json()) as SubscriptionsListResponse;
     expect(list.items.map((s) => s.id)).toEqual([created.id]);
     expect(list.items[0].companyId).toBe(company.id);
+    // 12.11: 응답 항목에 회사 메타 join — 이름·링크를 1왕복으로 얻는다.
+    expect(list.items[0].company.id).toBe(company.id);
+    expect(list.items[0].company.name).toBe("네이버");
+    expect(list.items[0].company.normName).toBe(company.normName);
+    expect(list.items[0].company).toHaveProperty("careersPageUrl");
 
     const del = await deleteReq(created.id);
     expect(del.status).toBe(204);

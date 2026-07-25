@@ -16,6 +16,7 @@ import type {
   CompanySubscription,
   CreateSubscriptionResponse,
   SubscriptionsListResponse,
+  SubscriptionWithCompany,
 } from "@/types/contract";
 
 /** DB 행 → wire 형태(createdAt ISO 문자열 — 계약의 날짜 규약) */
@@ -35,8 +36,19 @@ export async function GET() {
   const subs = await prisma.companySubscription.findMany({
     // 최신 구독순(북마크 목록과 동일 감각). 동시각 대비 id tiebreak 로 순서 안정화.
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    // 12.11: 회사 메타 join — 구독 목록이 리서치 진입 구조이므로 이름·링크를 1왕복으로.
+    include: { company: true },
   });
-  const body: SubscriptionsListResponse = { items: subs.map(toWire) };
+  const items: SubscriptionWithCompany[] = subs.map((sub) => ({
+    ...toWire(sub),
+    company: {
+      id: sub.company.id,
+      name: sub.company.name,
+      normName: sub.company.normName,
+      careersPageUrl: sub.company.careersPageUrl,
+    },
+  }));
+  const body: SubscriptionsListResponse = { items };
   return NextResponse.json(body);
 }
 
