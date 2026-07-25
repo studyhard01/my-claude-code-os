@@ -461,7 +461,7 @@ type JobDTO = Job & {
 
 **API (조각 1)**
 - `GET /api/companies/:id/research` — 리서치 aggregate: 회사 메타 + 노트(없으면 null) + **외부 데이터 슬롯**(공시·인재상은 비워 두고 조각 2·3 에서 채움 — 그전엔 프론트가 "준비 중 · 원문에서 확인" 폴백 + `careersPageUrl`/공고 원문 출처 링크로 정직하게 표시). 없는 회사 404 `COMPANY_NOT_FOUND`(12.5).
-- `PUT /api/companies/:id/research/note { content }` — 노트 upsert(idempotent). **빈 content = 노트 삭제**. `DELETE /api/companies/:id/research/note` 동일 효과.
+- `PUT /api/companies/:id/research/note { content }` — 노트 upsert(idempotent). **빈 content = 노트 삭제**. `DELETE /api/companies/:id/research/note` 동일 효과 — **싱글턴 서브리소스 삭제 = 멱등 204**(노트가 없어도 204, PUT-빈값 삭제와 의미 일치). 회사 자체가 없을 때만 404(2026-07-25 구현 시 확정).
 - **12.9 알려진 한계 해소**: `GET /api/subscriptions` 응답 항목에 회사 메타(id·name·normName·careersPageUrl) **join**. 구독 목록이 리서치 진입 구조가 되므로 이름·링크를 1왕복으로 얻는다(`companies?ids=` 대신 join 채택).
 
 **진입 구조 (5.2·6장)**
